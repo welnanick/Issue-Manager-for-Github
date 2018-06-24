@@ -2,6 +2,7 @@ package com.nickwelna.issuemanagerforgithub;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
@@ -33,10 +34,16 @@ public class MainActivity extends AppCompatActivity {
     ProgressBar searchProgress;
     @BindView(R.id.repository_recycler_view)
     RecyclerView repositoryRecyclerView;
+    @BindView(R.id.menu_recycler_view)
+    RecyclerView menuRecyclerView;
     @BindView(R.id.toolbar)
     Toolbar toolbar;
     @BindView(R.id.drawer_layout)
     DrawerLayout drawerLayout;
+    @BindView(R.id.nav_view)
+    NavigationView navigationView;
+    @BindView(R.id.empty_view)
+    TextView emptyView;
     RepositoryAdapter repositoryAdapter;
 
     @Override
@@ -54,6 +61,33 @@ public class MainActivity extends AppCompatActivity {
             actionbar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
 
         }
+
+        loadPinnedIssues();
+
+    }
+
+    /**
+     * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
+     */
+    private void loadPinnedIssues() {
+
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        menuRecyclerView.setLayoutManager(linearLayoutManager);
+        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter();
+        menuRecyclerView.setAdapter(pinnedIssueAdapter);
+        PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
+        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem("welnanick", 0);
+        pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
+        pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
+                "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
+                "#1293", 2);
+        pinnedIssueMenuItems[3] =
+                new PinnedIssueMenuItem("Multi module project with multiple R2 files", "#1292", 2);
+        pinnedIssueMenuItems[4] = new PinnedIssueMenuItem(
+                "Android Gradle plugin 3.1.0 must not be applied to project " +
+                        "'/Users/android_package/butterKnife/app' since version 3.1.0 was already" +
+                        " applied to this project", "#1290", 2);
+        pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
 
     }
 
@@ -135,6 +169,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         searchProgress.setVisibility(View.VISIBLE);
+        emptyView.setVisibility(View.GONE);
         final Handler handler = new Handler();
 
         final Runnable r = new Runnable() {

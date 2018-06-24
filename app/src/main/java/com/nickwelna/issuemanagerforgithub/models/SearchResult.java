@@ -23,4 +23,5 @@ public class SearchResult {
         return items;
 
     }
+
 }
