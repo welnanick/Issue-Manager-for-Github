@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -73,6 +74,8 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
         TextView issueTitle;
         @BindView(R.id.issue_number)
         TextView issueNumber;
+        @BindView(R.id.issue_status)
+        TextView issueStatus;
         View itemView;
         Context context;
         String repositoryName;
@@ -91,6 +94,14 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
 
             issueTitle.setText(issue.getTitle());
             issueNumber.setText('#' + String.valueOf(issue.getNumber()));
+            String issueState = issue.getState();
+            String issueStateCap = issueState.substring(0, 1).toUpperCase() + issueState.substring(1);
+            issueStatus.setText(issueStateCap);
+            if (issueState.equals("open")) {
+
+                issueStatus.setTextColor(context.getResources().getColor(R.color.material_green));
+
+            }
 
             itemView.setOnClickListener(new OnClickListener() {
 

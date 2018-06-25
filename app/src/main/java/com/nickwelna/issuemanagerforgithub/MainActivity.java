@@ -5,6 +5,8 @@ import android.os.Handler;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -14,15 +16,15 @@ import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
+import android.view.MenuItem.OnActionExpandListener;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 
 import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
 
 import butterknife.BindView;
@@ -30,8 +32,6 @@ import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
 
-    @BindView(R.id.search_progress)
-    ProgressBar searchProgress;
     @BindView(R.id.repository_recycler_view)
     RecyclerView repositoryRecyclerView;
     @BindView(R.id.menu_recycler_view)
@@ -42,9 +42,12 @@ public class MainActivity extends AppCompatActivity {
     DrawerLayout drawerLayout;
     @BindView(R.id.nav_view)
     NavigationView navigationView;
-    @BindView(R.id.empty_view)
-    TextView emptyView;
+    @BindView(R.id.swipe_refresh)
+    SwipeRefreshLayout swipeRefresh;
     RepositoryAdapter repositoryAdapter;
+    Repository[] pinnedRepositories;
+    String currentList = "pinned";
+    boolean refreshRequested = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,10 +62,69 @@ public class MainActivity extends AppCompatActivity {
 
             actionbar.setDisplayHomeAsUpEnabled(true);
             actionbar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
+            actionbar.setTitle("Pinned Issues");
+
+        }
+        swipeRefresh.setOnRefreshListener(new OnRefreshListener() {
+
+            @Override
+            public void onRefresh() {
+
+                refresh();
+
+            }
+
+        });
+        swipeRefresh.setColorSchemeResources(R.color.colorAccent);
+        swipeRefresh.setRefreshing(true);
+
+        loadPinnedIssues();
+        loadPinnedRepositories();
+
+    }
+
+    private void refresh() {
+
+        if (currentList.equals("pinned")) {
+
+            refreshRequested = true;
+            loadPinnedRepositories();
+
+        }
+        else {
+
+            searchRepositories();
 
         }
 
-        loadPinnedIssues();
+    }
+
+    private void loadPinnedRepositories() {
+
+        if (pinnedRepositories == null || refreshRequested) {
+            final Handler handler = new Handler();
+
+            final Runnable r = new Runnable() {
+
+                public void run() {
+
+                    Gson gson = new Gson();
+                    String test = getString(R.string.dummy_pinned_repos);
+                    pinnedRepositories = gson.fromJson(test, Repository[].class);
+                    repositoryAdapter.updateContents(pinnedRepositories);
+                    swipeRefresh.setRefreshing(false);
+                }
+
+            };
+
+            handler.postDelayed(r, 5000);
+        }
+        else {
+
+            repositoryAdapter.updateContents(pinnedRepositories);
+
+        }
+        refreshRequested = false;
 
     }
 
@@ -98,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.options_menu, menu);
 
         //Find the menu search item
-        MenuItem searchItem = menu.findItem(R.id.action_search);
+        final MenuItem searchItem = menu.findItem(R.id.action_search);
 
         //get the searchView from the search item
         SearchView searchView = (SearchView) searchItem.getActionView();
@@ -123,6 +185,27 @@ public class MainActivity extends AppCompatActivity {
 
                 }
                 return false;
+
+            }
+
+        });
+
+        searchItem.setOnActionExpandListener(new OnActionExpandListener() {
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem item) {
+
+                currentList = "pinned";
+                loadPinnedRepositories();
+                return true;
+
+            }
+
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem item) {
+
+                currentList = "search";
+                return true;
 
             }
 
@@ -159,7 +242,9 @@ public class MainActivity extends AppCompatActivity {
      */
     private void searchRepositories() {
 
-        repositoryAdapter.updateSearchResults(null);
+        swipeRefresh.setRefreshing(true);
+
+        repositoryAdapter.updateContents(null);
 
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
 
@@ -168,19 +253,17 @@ public class MainActivity extends AppCompatActivity {
             imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
         }
 
-        searchProgress.setVisibility(View.VISIBLE);
-        emptyView.setVisibility(View.GONE);
         final Handler handler = new Handler();
 
         final Runnable r = new Runnable() {
 
             public void run() {
 
-                searchProgress.setVisibility(View.GONE);
                 Gson gson = new Gson();
                 String test = getString(R.string.dummy_search_data);
                 SearchResult results = gson.fromJson(test, SearchResult.class);
-                repositoryAdapter.updateSearchResults(results.getItems());
+                repositoryAdapter.updateContents(results.getItems());
+                swipeRefresh.setRefreshing(false);
 
             }
 

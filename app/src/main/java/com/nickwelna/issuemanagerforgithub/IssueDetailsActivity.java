@@ -6,14 +6,16 @@ import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -30,8 +32,13 @@ public class IssueDetailsActivity extends AppCompatActivity {
     RecyclerView commentRecyclerView;
     @BindView(R.id.add_comment)
     FloatingActionButton addComment;
-    @BindView(R.id.loading_progress)
-    ProgressBar loadingProgress;
+    @BindView(R.id.swipe_refresh)
+    SwipeRefreshLayout swipeRefresh;
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+    @BindView(R.id.menu_recycler_view)
+    RecyclerView menuRecyclerView;
+    CommentAdapter commentAdapter;
     String repositoryName;
     Issue issue;
     boolean fromPinned;
@@ -49,34 +56,26 @@ public class IssueDetailsActivity extends AppCompatActivity {
         issue = extras.getParcelable("Issue");
         repositoryName = extras.getString("repo-name");
         fromPinned = extras.getBoolean("from-pinned");
+        setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(issue.getTitle());
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        Comment[] comments = getComments(issue);
+        swipeRefresh.setOnRefreshListener(new OnRefreshListener() {
 
-        final IssueCommentCommon[] allComments = new IssueCommentCommon[comments.length + 1];
-        allComments[0] = issue;
-        System.arraycopy(comments, 0, allComments, 1, comments.length);
+            @Override
+            public void onRefresh() {
 
-        commentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        final CommentAdapter commentAdapter = new CommentAdapter();
-        commentRecyclerView.setAdapter(commentAdapter);
-
-        final Handler handler = new Handler();
-
-        final Runnable r = new Runnable() {
-
-            public void run() {
-
-                commentAdapter.updateComments(allComments);
-                addComment.show();
-                firstRun = false;
-                loadingProgress.setVisibility(View.GONE);
+                loadComments();
 
             }
 
-        };
-        handler.postDelayed(r, 5000);
+        });
+        swipeRefresh.setColorSchemeResources(R.color.colorAccent);
+        swipeRefresh.setRefreshing(true);
+        commentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        commentAdapter = new CommentAdapter();
+        commentRecyclerView.setAdapter(commentAdapter);
+        loadComments();
 
         addComment.setOnClickListener(new OnClickListener() {
 
@@ -93,6 +92,59 @@ public class IssueDetailsActivity extends AppCompatActivity {
             }
 
         });
+
+        loadPinnedIssues();
+
+    }
+
+    /**
+     * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
+     */
+    private void loadPinnedIssues() {
+
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        menuRecyclerView.setLayoutManager(linearLayoutManager);
+        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter();
+        menuRecyclerView.setAdapter(pinnedIssueAdapter);
+        PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
+        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem("welnanick", 0);
+        pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
+        pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
+                "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
+                "#1293", 2);
+        pinnedIssueMenuItems[3] =
+                new PinnedIssueMenuItem("Multi module project with multiple R2 files", "#1292", 2);
+        pinnedIssueMenuItems[4] = new PinnedIssueMenuItem(
+                "Android Gradle plugin 3.1.0 must not be applied to project " +
+                        "'/Users/android_package/butterKnife/app' since version 3.1.0 was already" +
+                        " applied to this project", "#1290", 2);
+        pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+
+    }
+
+    private void loadComments() {
+
+        Comment[] comments = getComments(issue);
+
+        final IssueCommentCommon[] allComments = new IssueCommentCommon[comments.length + 1];
+        allComments[0] = issue;
+        System.arraycopy(comments, 0, allComments, 1, comments.length);
+
+        final Handler handler = new Handler();
+
+        final Runnable r = new Runnable() {
+
+            public void run() {
+
+                commentAdapter.updateComments(allComments);
+                addComment.show();
+                firstRun = false;
+                swipeRefresh.setRefreshing(false);
+
+            }
+
+        };
+        handler.postDelayed(r, 5000);
 
     }
 
@@ -193,6 +245,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         if (isPinned()) {
 
             pinUnpin.setTitle("Unpin issue");
+            pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
 
         }
 
@@ -202,7 +255,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private boolean isPinned() {
 
-        return false;
+        return issue.getNumber() % 2 == 0;
 
     }
 

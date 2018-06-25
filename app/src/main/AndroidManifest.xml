@@ -25,11 +25,11 @@
             android:name=".IssueListActivity"
             android:launchMode="standard"
             android:parentActivityName=".MainActivity"
-            android:theme="@style/AppTheme.DarkActionBar" />
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".IssueDetailsActivity"
             android:parentActivityName=".IssueListActivity"
-            android:theme="@style/AppTheme.DarkActionBar" />
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".EditComment"
             android:theme="@style/AppTheme.DarkActionBar" />

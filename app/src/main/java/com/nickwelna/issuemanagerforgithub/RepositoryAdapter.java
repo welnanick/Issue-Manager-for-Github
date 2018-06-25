@@ -54,7 +54,7 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
 
     }
 
-    public void updateSearchResults(Repository[] repositories) {
+    public void updateContents(Repository[] repositories) {
 
         this.repositories = repositories;
         notifyDataSetChanged();

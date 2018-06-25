@@ -114,7 +114,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
         }
 
-        void bind(PinnedIssueMenuItem item) {
+        void bind(final PinnedIssueMenuItem item) {
 
             switch (viewType) {
 
@@ -127,6 +127,20 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                 case 1:
                     text.setText(item.text);
+                    itemView.setOnClickListener(new OnClickListener() {
+
+                        @Override
+                        public void onClick(View v) {
+
+                            Intent viewRepoIntent = new Intent(context, IssueListActivity.class);
+                            Bundle extras = new Bundle();
+                            extras.putString("repository", item.text);
+                            viewRepoIntent.putExtras(extras);
+                            context.startActivity(viewRepoIntent);
+
+                        }
+
+                    });
                     break;
 
                 default:
