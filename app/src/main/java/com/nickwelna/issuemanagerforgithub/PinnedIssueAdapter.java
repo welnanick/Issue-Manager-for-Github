@@ -1,10 +1,15 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,8 +20,10 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.PinnedIssueAdapter.PinnedIssueViewHolder;
+import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 
 import butterknife.BindView;
@@ -25,6 +32,13 @@ import butterknife.ButterKnife;
 class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
     PinnedIssueMenuItem[] pinnedIssues;
+    GithubUser user;
+
+    public PinnedIssueAdapter(GithubUser user) {
+
+        this.user = user;
+
+    }
 
     @NonNull
     @Override
@@ -61,7 +75,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
         if (pinnedIssues != null && pinnedIssues.length > 0) {
 
-            holder.bind(pinnedIssues[position]);
+            holder.bind(pinnedIssues[position], user);
 
         }
 
@@ -98,31 +112,74 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
         @BindView(R.id.header_view)
         TextView headerView;
         @Nullable
+        @BindView(R.id.logout_text)
+        TextView logoutText;
+        @Nullable
         @BindView(R.id.avatar)
         ImageView avatar;
         View itemView;
         int viewType;
         Context context;
+        AlertDialog logoutAlert;
 
-        PinnedIssueViewHolder(View itemView, int viewType, Context context) {
+        PinnedIssueViewHolder(View itemView, int viewType, final Context context) {
 
             super(itemView);
             this.itemView = itemView;
             this.viewType = viewType;
             this.context = context;
+            logoutAlert = new AlertDialog.Builder(context).setTitle("Logout?")
+                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            dialog.dismiss();
+
+                        }
+
+                    }).setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            SharedPreferences preferences =
+                                    PreferenceManager.getDefaultSharedPreferences(context);
+                            Editor editor = preferences.edit();
+                            editor.putString("OAuth_token", null);
+                            editor.apply();
+                            FirebaseAuth.getInstance().signOut();
+
+                            Intent logoutIntent = new Intent(context, LoginActivity.class);
+                            logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            dialog.dismiss();
+                            context.startActivity(logoutIntent);
+                        }
+                    }).create();
             ButterKnife.bind(this, itemView);
 
         }
 
-        void bind(final PinnedIssueMenuItem item) {
+        void bind(final PinnedIssueMenuItem item, GithubUser user) {
 
             switch (viewType) {
 
                 case 0:
-                    headerView.setText(item.text);
-                    Glide.with(itemView)
-                         .load("https://avatars3.githubusercontent.com/u/10217506?v=4")
-                         .apply(RequestOptions.circleCropTransform()).into(avatar);
+                    headerView.setText(user.getLogin());
+                    Glide.with(itemView).load(user.getAvatar_url())
+                            .apply(RequestOptions.circleCropTransform()).into(avatar);
+                    logoutText.setOnClickListener(new OnClickListener() {
+
+                        @Override
+                        public void onClick(View v) {
+
+                            logoutAlert.show();
+
+                        }
+
+                    });
+
                     break;
 
                 case 1:

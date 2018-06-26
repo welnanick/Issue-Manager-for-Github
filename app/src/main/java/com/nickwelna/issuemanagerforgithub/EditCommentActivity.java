@@ -1,7 +1,9 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AlertDialog;
@@ -12,12 +14,18 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
+import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
-public class EditComment extends AppCompatActivity {
+public class EditCommentActivity extends AppCompatActivity {
 
     @BindView(R.id.title_input_layout)
     TextInputLayout titleInputLayout;
@@ -27,6 +35,9 @@ public class EditComment extends AppCompatActivity {
     TextInputEditText bodyEditText;
     @BindView(R.id.submit_button)
     Button submitButton;
+    GitHubService service;
+    SharedPreferences preferences;
+    String repositoryName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,8 +48,9 @@ public class EditComment extends AppCompatActivity {
 
         Bundle extras = getIntent().getExtras();
         final String action = extras.getString("action");
-        String type = extras.getString("type");
+        final String type = extras.getString("type");
         IssueCommentCommon comment = extras.getParcelable("comment");
+        repositoryName = extras.getString("repo_name");
         StringBuilder titleBuilder = new StringBuilder();
         switch (action) {
 
@@ -79,22 +91,59 @@ public class EditComment extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                submitComment(action);
+                submitComment(action, type);
 
             }
 
         });
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        String token = preferences.getString("OAuth_token", null);
+
+        service = ServiceGenerator.createService(token);
 
     }
 
-    private void submitComment(String action) {
+    private void submitComment(String action, String type) {
 
         switch (action) {
 
             case "add":
-                Toast.makeText(this, "New comment submitted", Toast.LENGTH_LONG).show();
-                finish();
-                break;
+
+                switch (type) {
+
+                    case "issue":
+
+                        String[] repoNameSplit = repositoryName.split("/");
+                        IssueAddEditRequest request = new IssueAddEditRequest();
+                        request.setTitle(titleEditText.getText().toString());
+                        request.setBody(bodyEditText.getText().toString());
+                        service.addIssue(repoNameSplit[0], repoNameSplit[1], request)
+                                .enqueue(new Callback<Issue>() {
+
+                                    @Override
+                                    public void onResponse(Call<Issue> call,
+                                                           Response<Issue> response) {
+
+                                        Toast.makeText(EditCommentActivity.this,
+                                                "New Issue submitted", Toast.LENGTH_LONG).show();
+                                        finish();
+
+                                    }
+
+                                    @Override
+                                    public void onFailure(Call<Issue> call, Throwable t) {
+
+                                    }
+                                });
+
+                        break;
+
+                    case "comment":
+
+                        break;
+
+                }
 
             case "edit":
                 Toast.makeText(this, "Comment edit submitted", Toast.LENGTH_LONG).show();
@@ -108,8 +157,8 @@ public class EditComment extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
-        new AlertDialog.Builder(this).setTitle("Discard Changes?").setPositiveButton("Discard",
-                new DialogInterface.OnClickListener() {
+        new AlertDialog.Builder(this).setTitle("Discard Changes?")
+                .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
 
                     @Override
                     public void onClick(DialogInterface dialog, int which) {

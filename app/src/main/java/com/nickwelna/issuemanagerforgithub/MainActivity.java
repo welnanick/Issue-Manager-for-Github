@@ -1,7 +1,9 @@
 package com.nickwelna.issuemanagerforgithub;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -24,11 +26,17 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 
 import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
+import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,6 +56,9 @@ public class MainActivity extends AppCompatActivity {
     Repository[] pinnedRepositories;
     String currentList = "pinned";
     boolean refreshRequested = false;
+    SharedPreferences preferences;
+    GitHubService service;
+    EditText searchText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
         setSupportActionBar(toolbar);
 
         ActionBar actionbar = getSupportActionBar();
@@ -62,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
 
             actionbar.setDisplayHomeAsUpEnabled(true);
             actionbar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
-            actionbar.setTitle("Pinned Issues");
 
         }
         swipeRefresh.setOnRefreshListener(new OnRefreshListener() {
@@ -78,7 +90,24 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.colorAccent);
         swipeRefresh.setRefreshing(true);
 
-        loadPinnedIssues();
+        String token = preferences.getString("OAuth_token", null);
+
+        service = ServiceGenerator.createService(token);
+        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+            @Override
+            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                loadPinnedIssues(response.body());
+
+            }
+
+            @Override
+            public void onFailure(Call<GithubUser> call, Throwable t) {
+
+            }
+        });
+
         loadPinnedRepositories();
 
     }
@@ -130,15 +159,17 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
+     *
+     * @param user
      */
-    private void loadPinnedIssues() {
+    private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         menuRecyclerView.setLayoutManager(linearLayoutManager);
-        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter();
+        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
         PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem("welnanick", 0);
+        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
         pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
         pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
                 "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
@@ -169,12 +200,11 @@ public class MainActivity extends AppCompatActivity {
         searchView.setQueryHint("Search");
 
         //Access the Edit Text in the searchview
-        final EditText text =
-                searchView.findViewById(android.support.v7.appcompat.R.id.search_src_text);
+        searchText = searchView.findViewById(android.support.v7.appcompat.R.id.search_src_text);
 
         //make it so it performs our github search call when the user hits the search button on
         // the keyboard
-        text.setOnEditorActionListener(new OnEditorActionListener() {
+        searchText.setOnEditorActionListener(new OnEditorActionListener() {
 
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -237,8 +267,6 @@ public class MainActivity extends AppCompatActivity {
     /**
      * This method performs our Github Search. It dismisses the keyboard, shows and hides the
      * progress bar, and performs the search
-     * <p>
-     * TODO: Replace dummy data with actual search call
      */
     private void searchRepositories() {
 
@@ -253,23 +281,50 @@ public class MainActivity extends AppCompatActivity {
             imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
         }
 
-        final Handler handler = new Handler();
+        service.searchRepositories(searchText.getText().toString())
+                .enqueue(new Callback<SearchResult>() {
 
-        final Runnable r = new Runnable() {
+                    @Override
+                    public void onResponse(Call<SearchResult> call,
+                                           Response<SearchResult> response) {
 
-            public void run() {
+                        SearchResult results = response.body();
 
-                Gson gson = new Gson();
-                String test = getString(R.string.dummy_search_data);
-                SearchResult results = gson.fromJson(test, SearchResult.class);
-                repositoryAdapter.updateContents(results.getItems());
-                swipeRefresh.setRefreshing(false);
+                        if (results != null) {
 
-            }
+                            repositoryAdapter.updateContents(results.getItems());
 
-        };
+                        }
+                        swipeRefresh.setRefreshing(false);
 
-        handler.postDelayed(r, 5000);
+                    }
+
+                    @Override
+                    public void onFailure(Call<SearchResult> call, Throwable t) {
+
+                    }
+
+                });
+
+    }
+
+    @Override
+    public void onBackPressed() {
+
+        // Back button press should dismiss navigation drawer. This is common behavior in android
+        // apps. For example, the gmail, google+, google keep, twitter, and reddit apps all
+        // follow this behavior
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+
+            drawerLayout.closeDrawer(GravityCompat.START);
+
+        }
+        else {
+
+            super.onBackPressed();
+
+        }
+
     }
 
 }

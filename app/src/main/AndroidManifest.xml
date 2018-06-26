@@ -13,14 +13,9 @@
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
+            android:label="@string/main_activity_name"
             android:launchMode="singleTop"
-            android:theme="@style/AppTheme.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".IssueListActivity"
             android:launchMode="standard"
@@ -31,8 +26,17 @@
             android:parentActivityName=".IssueListActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
-            android:name=".EditComment"
+            android:name=".EditCommentActivity"
             android:theme="@style/AppTheme.DarkActionBar" />
+        <activity
+            android:name=".LoginActivity"
+            android:theme="@style/AppTheme.DarkActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

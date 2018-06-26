@@ -1,11 +1,14 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
 import android.support.v7.app.AppCompatActivity;
@@ -18,13 +21,18 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.models.Comment;
+import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
+import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class IssueDetailsActivity extends AppCompatActivity {
 
@@ -38,11 +46,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
     Toolbar toolbar;
     @BindView(R.id.menu_recycler_view)
     RecyclerView menuRecyclerView;
+    @BindView(R.id.drawer_layout)
+    DrawerLayout drawerLayout;
     CommentAdapter commentAdapter;
     String repositoryName;
     Issue issue;
     boolean fromPinned;
     boolean firstRun = true;
+    GitHubService service;
+    SharedPreferences preferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,14 +87,14 @@ public class IssueDetailsActivity extends AppCompatActivity {
         commentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         commentAdapter = new CommentAdapter();
         commentRecyclerView.setAdapter(commentAdapter);
-        loadComments();
 
         addComment.setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
 
-                Intent addCommentIntent = new Intent(IssueDetailsActivity.this, EditComment.class);
+                Intent addCommentIntent =
+                        new Intent(IssueDetailsActivity.this, EditCommentActivity.class);
                 Bundle extras = new Bundle();
                 extras.putString("action", "add");
                 extras.putString("type", "comment");
@@ -93,21 +105,42 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         });
 
-        loadPinnedIssues();
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        String token = preferences.getString("OAuth_token", null);
+
+        service = ServiceGenerator.createService(token);
+        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+            @Override
+            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                loadPinnedIssues(response.body());
+
+            }
+
+            @Override
+            public void onFailure(Call<GithubUser> call, Throwable t) {
+
+            }
+        });
+        loadComments();
 
     }
 
     /**
      * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
+     *
+     * @param user
      */
-    private void loadPinnedIssues() {
+    private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         menuRecyclerView.setLayoutManager(linearLayoutManager);
-        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter();
+        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
         PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem("welnanick", 0);
+        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
         pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
         pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
                 "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
@@ -124,27 +157,32 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private void loadComments() {
 
-        Comment[] comments = getComments(issue);
+        String[] repoNameSplit = repositoryName.split("/");
 
-        final IssueCommentCommon[] allComments = new IssueCommentCommon[comments.length + 1];
-        allComments[0] = issue;
-        System.arraycopy(comments, 0, allComments, 1, comments.length);
+        service.getComments(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                .enqueue(new Callback<Comment[]>() {
 
-        final Handler handler = new Handler();
+                    @Override
+                    public void onResponse(Call<Comment[]> call, Response<Comment[]> response) {
 
-        final Runnable r = new Runnable() {
+                        Comment[] comments = response.body();
 
-            public void run() {
+                        final IssueCommentCommon[] allComments =
+                                new IssueCommentCommon[comments.length + 1];
+                        allComments[0] = issue;
+                        System.arraycopy(comments, 0, allComments, 1, comments.length);
+                        commentAdapter.updateComments(allComments);
+                        addComment.show();
+                        firstRun = false;
+                        swipeRefresh.setRefreshing(false);
 
-                commentAdapter.updateComments(allComments);
-                addComment.show();
-                firstRun = false;
-                swipeRefresh.setRefreshing(false);
+                    }
 
-            }
+                    @Override
+                    public void onFailure(Call<Comment[]> call, Throwable t) {
 
-        };
-        handler.postDelayed(r, 5000);
+                    }
+                });
 
     }
 
@@ -166,62 +204,6 @@ public class IssueDetailsActivity extends AppCompatActivity {
         parentIntent.putExtras(extras);
 
         return parentIntent;
-    }
-
-    public Comment[] getComments(Issue issue) {
-
-        Gson gson = new Gson();
-        return gson.fromJson("[{\"url\":\"https://api.github" +
-                ".com/repos/JakeWharton/butterknife/issues/comments/386957944\"," +
-                "\"html_url\":\"https://github" +
-                ".com/JakeWharton/butterknife/issues/1269#issuecomment-386957944\"," +
-                "\"issue_url\":\"https://api.github" +
-                ".com/repos/JakeWharton/butterknife/issues/1269\",\"id\":386957944," +
-                "\"node_id\":\"MDEyOklzc3VlQ29tbWVudDM4Njk1Nzk0NA==\"," +
-                "\"user\":{\"login\":\"JakeWharton\",\"id\":66577," +
-                "\"node_id\":\"MDQ6VXNlcjY2NTc3\"," +
-                "\"avatar_url\":\"https://avatars0.githubusercontent.com/u/66577?v=4\"," +
-                "\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/JakeWharton\"," +
-                "\"html_url\":\"https://github.com/JakeWharton\",\"followers_url\":\"https://api" +
-                ".github.com/users/JakeWharton/followers\",\"following_url\":\"https://api.github" +
-                ".com/users/JakeWharton/following{/other_user}\",\"gists_url\":\"https://api" +
-                ".github.com/users/JakeWharton/gists{/gist_id}\",\"starred_url\":\"https://api" +
-                ".github.com/users/JakeWharton/starred{/owner}{/repo}\"," +
-                "\"subscriptions_url\":\"https://api.github" +
-                ".com/users/JakeWharton/subscriptions\",\"organizations_url\":\"https://api" +
-                ".github.com/users/JakeWharton/orgs\",\"repos_url\":\"https://api.github" +
-                ".com/users/JakeWharton/repos\",\"events_url\":\"https://api.github" +
-                ".com/users/JakeWharton/events{/privacy}\",\"received_events_url\":\"https://api" +
-                ".github.com/users/JakeWharton/received_events\",\"type\":\"User\"," +
-                "\"site_admin\":false},\"created_at\":\"2018-05-07T05:03:10Z\"," +
-                "\"updated_at\":\"2018-05-07T05:03:10Z\",\"author_association\":\"OWNER\"," +
-                "\"body\":\"The warning shouldn't occur because a class is generated which " +
-                "accesses those fields. I'll take a look at some point...\"}," +
-                "{\"url\":\"https://api.github" +
-                ".com/repos/JakeWharton/butterknife/issues/comments/387126325\"," +
-                "\"html_url\":\"https://github" +
-                ".com/JakeWharton/butterknife/issues/1269#issuecomment-387126325\"," +
-                "\"issue_url\":\"https://api.github" +
-                ".com/repos/JakeWharton/butterknife/issues/1269\",\"id\":387126325," +
-                "\"node_id\":\"MDEyOklzc3VlQ29tbWVudDM4NzEyNjMyNQ==\"," +
-                "\"user\":{\"login\":\"Madonahs\",\"id\":11560987," +
-                "\"node_id\":\"MDQ6VXNlcjExNTYwOTg3\"," +
-                "\"avatar_url\":\"https://avatars3.githubusercontent.com/u/11560987?v=4\"," +
-                "\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/Madonahs\"," +
-                "\"html_url\":\"https://github.com/Madonahs\",\"followers_url\":\"https://api" +
-                ".github.com/users/Madonahs/followers\",\"following_url\":\"https://api.github" +
-                ".com/users/Madonahs/following{/other_user}\",\"gists_url\":\"https://api.github" +
-                ".com/users/Madonahs/gists{/gist_id}\",\"starred_url\":\"https://api.github" +
-                ".com/users/Madonahs/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api" +
-                ".github.com/users/Madonahs/subscriptions\",\"organizations_url\":\"https://api" +
-                ".github.com/users/Madonahs/orgs\",\"repos_url\":\"https://api.github" +
-                ".com/users/Madonahs/repos\",\"events_url\":\"https://api.github" +
-                ".com/users/Madonahs/events{/privacy}\",\"received_events_url\":\"https://api" +
-                ".github.com/users/Madonahs/received_events\",\"type\":\"User\"," +
-                "\"site_admin\":false},\"created_at\":\"2018-05-07T16:42:53Z\"," +
-                "\"updated_at\":\"2018-05-07T16:42:53Z\",\"author_association\":\"NONE\"," +
-                "\"body\":\"Thank you, will appreciate. \"}]", Comment[].class);
-
     }
 
     @Override
@@ -325,6 +307,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         super.onPause();
         addComment.hide();
+
+    }
+
+    @Override
+    public void onBackPressed() {
+
+        // Back button press should dismiss navigation drawer. This is common behavior in android
+        // apps. For example, the gmail, google+, google keep, twitter, and reddit apps all
+        // follow this behavior
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+
+            drawerLayout.closeDrawer(GravityCompat.START);
+
+        }
+        else {
+
+            super.onBackPressed();
+
+        }
 
     }
 

@@ -52,6 +52,12 @@ public class Issue extends IssueCommentCommon {
 
     }
 
+    public int getComments() {
+
+        return comments;
+
+    }
+
     @Override
     public void writeToParcel(Parcel dest, int flags) {
 

@@ -21,4 +21,9 @@ class PinnedIssueMenuItem {
 
     }
 
+    public PinnedIssueMenuItem(int viewType) {
+
+        this.viewType = viewType;
+
+    }
 }

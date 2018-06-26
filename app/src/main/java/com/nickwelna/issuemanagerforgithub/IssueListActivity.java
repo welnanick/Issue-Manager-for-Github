@@ -1,9 +1,12 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
 import android.support.v7.app.AppCompatActivity;
@@ -16,11 +19,16 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
+import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class IssueListActivity extends AppCompatActivity {
 
@@ -34,9 +42,13 @@ public class IssueListActivity extends AppCompatActivity {
     Toolbar toolbar;
     @BindView(R.id.menu_recycler_view)
     RecyclerView menuRecyclerView;
+    @BindView(R.id.drawer_layout)
+    DrawerLayout drawerLayout;
     IssueAdapter issueAdapter;
     boolean firstRun = true;
     String repositoryName;
+    GitHubService service;
+    SharedPreferences preferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,8 +73,6 @@ public class IssueListActivity extends AppCompatActivity {
 
         });
         swipeRefresh.setColorSchemeResources(R.color.colorAccent);
-        swipeRefresh.setRefreshing(true);
-        loadIssues();
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         issue_recycler_view.setLayoutManager(linearLayoutManager);
         issueAdapter = new IssueAdapter(repositoryName);
@@ -73,10 +83,12 @@ public class IssueListActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                Intent addCommentIntent = new Intent(IssueListActivity.this, EditComment.class);
+                Intent addCommentIntent =
+                        new Intent(IssueListActivity.this, EditCommentActivity.class);
                 Bundle extras = new Bundle();
                 extras.putString("action", "add");
                 extras.putString("type", "issue");
+                extras.putString("repo_name", repositoryName);
                 addCommentIntent.putExtras(extras);
                 startActivity(addCommentIntent);
 
@@ -84,21 +96,44 @@ public class IssueListActivity extends AppCompatActivity {
 
         });
 
-        loadPinnedIssues();
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        String token = preferences.getString("OAuth_token", null);
+
+        service = ServiceGenerator.createService(token);
+        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+            @Override
+            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                loadPinnedIssues(response.body());
+
+            }
+
+            @Override
+            public void onFailure(Call<GithubUser> call, Throwable t) {
+
+            }
+        });
+
+        swipeRefresh.setRefreshing(true);
+        loadIssues();
 
     }
 
     /**
      * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
+     *
+     * @param user
      */
-    private void loadPinnedIssues() {
+    private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         menuRecyclerView.setLayoutManager(linearLayoutManager);
-        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter();
+        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
         PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem("welnanick", 0);
+        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
         pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
         pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
                 "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
@@ -115,24 +150,27 @@ public class IssueListActivity extends AppCompatActivity {
 
     private void loadIssues() {
 
-        final Handler handler = new Handler();
+        String[] repoNameSplit = repositoryName.split("/");
 
-        final Runnable r = new Runnable() {
+        service.getIssues(repoNameSplit[0], repoNameSplit[1], "all")
+                .enqueue(new Callback<Issue[]>() {
 
-            public void run() {
+                    @Override
+                    public void onResponse(Call<Issue[]> call, Response<Issue[]> response) {
 
-                Gson gson = new Gson();
-                String test = getString(R.string.dummy_issue_data);
-                Issue[] results = gson.fromJson(test, Issue[].class);
-                issueAdapter.updateIssues(results);
-                addIssue.show();
-                firstRun = false;
-                swipeRefresh.setRefreshing(false);
+                        Issue[] issues = response.body();
+                        issueAdapter.updateIssues(issues);
+                        addIssue.show();
+                        firstRun = false;
+                        swipeRefresh.setRefreshing(false);
 
-            }
+                    }
 
-        };
-        handler.postDelayed(r, 5000);
+                    @Override
+                    public void onFailure(Call<Issue[]> call, Throwable t) {
+
+                    }
+                });
 
     }
 
@@ -201,6 +239,25 @@ public class IssueListActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+
+    }
+
+    @Override
+    public void onBackPressed() {
+
+        // Back button press should dismiss navigation drawer. This is common behavior in android
+        // apps. For example, the gmail, google+, google keep, twitter, and reddit apps all
+        // follow this behavior
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+
+            drawerLayout.closeDrawer(GravityCompat.START);
+
+        }
+        else {
+
+            super.onBackPressed();
+
+        }
 
     }
 

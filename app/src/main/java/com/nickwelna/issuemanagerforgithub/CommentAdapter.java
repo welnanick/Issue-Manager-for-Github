@@ -95,7 +95,7 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
             howLong.setText(getHowLong(comment));
             body.setText(comment.getBody());
             Glide.with(itemView).load(comment.getUser().getAvatar_url())
-                 .apply(RequestOptions.circleCropTransform()).into(avatar);
+                    .apply(RequestOptions.circleCropTransform()).into(avatar);
 
             if (!comment.getUser().getLogin().equals(usernameString)) {
 
@@ -109,7 +109,7 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                     @Override
                     public void onClick(View v) {
 
-                        Intent addCommentIntent = new Intent(context, EditComment.class);
+                        Intent addCommentIntent = new Intent(context, EditCommentActivity.class);
                         Bundle extras = new Bundle();
                         extras.putString("action", "edit");
                         if (comment instanceof Issue) {
