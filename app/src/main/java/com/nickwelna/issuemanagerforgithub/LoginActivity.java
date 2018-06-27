@@ -78,6 +78,16 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
         ButterKnife.bind(this);
 
+        if (savedInstanceState != null) {
+
+            if (savedInstanceState.getBoolean("two_factor_visible")) {
+
+                twoFactorInputLayout.setVisibility(View.VISIBLE);
+
+            }
+
+        }
+
         loginButton.setOnClickListener(new OnClickListener() {
 
             @Override
@@ -300,4 +310,12 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("two_factor_visible",
+                twoFactorInputLayout.getVisibility() == View.VISIBLE);
+
+    }
 }

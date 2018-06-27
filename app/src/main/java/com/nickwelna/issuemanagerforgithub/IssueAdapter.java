@@ -15,12 +15,14 @@ import com.nickwelna.issuemanagerforgithub.IssueAdapter.IssueViewHolder;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 
+import java.util.ArrayList;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
 
-    Issue[] issues;
+    ArrayList<Issue> issues;
     String repositoryName;
     GithubUser user;
 
@@ -43,9 +45,9 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull IssueViewHolder holder, int position) {
 
-        if (issues != null && issues.length > 0) {
+        if (issues != null && issues.size() > 0) {
 
-            holder.bind(issues[position]);
+            holder.bind(issues.get(position));
 
         }
 
@@ -56,14 +58,14 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
 
         if (issues != null) {
 
-            return issues.length;
+            return issues.size();
 
         }
         return 0;
 
     }
 
-    public void updateIssues(Issue[] issues) {
+    public void updateIssues(ArrayList<Issue> issues) {
 
         this.issues = issues;
         notifyDataSetChanged();

@@ -46,7 +46,6 @@ import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -69,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
     RepositoryAdapter repositoryAdapter;
-    List<Repository> pinnedRepositories;
+    ArrayList<Repository> visibleRepositories;
     String currentList = "pinned";
     boolean refreshRequested = false;
     SharedPreferences preferences;
@@ -80,6 +79,11 @@ public class MainActivity extends AppCompatActivity {
     FirebaseAuth auth = FirebaseAuth.getInstance();
     DatabaseReference userDataReference =
             database.getReference("users").child(auth.getCurrentUser().getUid());
+    ArrayList<PinnedIssueMenuItem> pinnedIssueMenuItems;
+    boolean firstRun;
+    MenuItem searchItem;
+    boolean loadSearch = false;
+    String searchTextString;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +92,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        firstRun = true;
+
+        if (savedInstanceState != null) {
+
+            user = savedInstanceState.getParcelable("user");
+            pinnedIssueMenuItems = savedInstanceState.getParcelableArrayList("pinned_issues");
+            visibleRepositories = savedInstanceState.getParcelableArrayList("visible_repositories");
+            loadSearch = savedInstanceState.getBoolean("load_search");
+            searchTextString = savedInstanceState.getString("search_text");
+
+        }
 
         setSupportActionBar(toolbar);
 
@@ -111,75 +126,87 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.colorAccent);
         swipeRefresh.setRefreshing(true);
 
-        String token = preferences.getString("OAuth_token", null);
-
-        service = ServiceGenerator.createService(token);
-        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
-
-            @Override
-            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
-
-                if (response.code() == 401) {
-
-                    Gson gson = new Gson();
-                    APIRequestError error = null;
-                    try {
-                        error = gson.fromJson(response.errorBody().string(), APIRequestError.class);
-                    }
-                    catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    if (error.getMessage().equals("Bad credentials")) {
-
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("Login Credentials Expired").setMessage(
-                                "Your login credentials have expired, please log in again")
-                                .setPositiveButton("Ok", new OnClickListener() {
-
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-
-                                        SharedPreferences preferences = PreferenceManager
-                                                .getDefaultSharedPreferences(MainActivity.this);
-                                        Editor editor = preferences.edit();
-                                        editor.putString("OAuth_token", null);
-                                        editor.apply();
-                                        FirebaseAuth.getInstance().signOut();
-
-                                        Intent logoutIntent =
-                                                new Intent(MainActivity.this, LoginActivity.class);
-                                        logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                        dialog.dismiss();
-                                        MainActivity.this.startActivity(logoutIntent);
-
-                                    }
-
-                                }).create().show();
-
-                    }
-
-                }
-                else {
-
-                    user = response.body();
-                    repositoryAdapter.updateUser(user);
-                    loadPinnedIssues(user);
-
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<GithubUser> call, Throwable t) {
-
-            }
-        });
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         repositoryRecyclerView.setLayoutManager(linearLayoutManager);
         repositoryAdapter = new RepositoryAdapter();
         repositoryRecyclerView.setAdapter(repositoryAdapter);
+
+        String token = preferences.getString("OAuth_token", null);
+
+        service = ServiceGenerator.createService(token);
+        if (user == null) {
+            service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+                @Override
+                public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                    if (response.code() == 401) {
+
+                        Gson gson = new Gson();
+                        APIRequestError error = null;
+                        try {
+                            error = gson.fromJson(response.errorBody().string(),
+                                    APIRequestError.class);
+                        }
+                        catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        if (error.getMessage().equals("Bad credentials")) {
+
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle("Login " + "Credentials Expired").setMessage(
+                                    "Your login credentials have expired, please log in again")
+                                    .setPositiveButton("Ok", new OnClickListener() {
+
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+
+                                            SharedPreferences preferences = PreferenceManager
+                                                    .getDefaultSharedPreferences(MainActivity.this);
+                                            Editor editor = preferences.edit();
+                                            editor.putString("OAuth_token", null);
+                                            editor.apply();
+                                            FirebaseAuth.getInstance().signOut();
+
+                                            Intent logoutIntent = new Intent(MainActivity.this,
+                                                    LoginActivity.class);
+                                            logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                            dialog.dismiss();
+                                            MainActivity.this.startActivity(logoutIntent);
+
+                                        }
+
+                                    }).create().show();
+
+                        }
+
+                    }
+                    else {
+
+                        user = response.body();
+                        repositoryAdapter.updateUser(user);
+                        loadPinnedIssues(user);
+                        loadPinnedRepositories();
+
+                    }
+
+                }
+
+                @Override
+                public void onFailure(Call<GithubUser> call, Throwable t) {
+
+                }
+            });
+        }
+        else {
+
+            repositoryAdapter.updateUser(user);
+            loadPinnedIssues(user);
+            loadPinnedRepositories();
+
+        }
 
     }
 
@@ -201,32 +228,42 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadPinnedRepositories() {
 
-        DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
-        ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
+        if (visibleRepositories == null || refreshRequested) {
 
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
+            ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
 
-                pinnedRepositories = new ArrayList<>();
-                for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                    Repository temp = new Repository();
-                    temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
-                    pinnedRepositories.add(temp);
+                    visibleRepositories = new ArrayList<>();
+                    for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+
+                        Repository temp = new Repository();
+                        temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
+                        visibleRepositories.add(temp);
+
+                    }
+                    swipeRefresh.setRefreshing(false);
+                    repositoryAdapter.updateContents(visibleRepositories);
 
                 }
-                swipeRefresh.setRefreshing(false);
-                repositoryAdapter.updateContents(pinnedRepositories);
 
-            }
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            };
+            pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
+            refreshRequested = false;
 
-            }
-        };
-        pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
-        refreshRequested = false;
+        }
+        else {
+
+            swipeRefresh.setRefreshing(false);
+            repositoryAdapter.updateContents(visibleRepositories);
+
+        }
 
     }
 
@@ -241,46 +278,56 @@ public class MainActivity extends AppCompatActivity {
         menuRecyclerView.setLayoutManager(linearLayoutManager);
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
-        final List<PinnedIssueMenuItem> pinnedIssueMenuItems = new ArrayList<>();
-        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
 
-        DatabaseReference pinnedIssues = userDataReference.child("pinned_issues");
-        ValueEventListener pinnedIssueListener = new ValueEventListener() {
+        if (pinnedIssueMenuItems == null) {
 
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+            pinnedIssueMenuItems = new ArrayList<>();
+            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
 
-                //owners of all repos with pinned issues
-                for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
-                    String owner = pinnedIssueSnapshot.getKey();
+            DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
+            ValueEventListener pinnedIssueListener = new ValueEventListener() {
 
-                    //repositories that have pinned issues
-                    for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
-                        String repositoryName = ownerRepositories.getKey();
-                        String fullName = owner + "/" + repositoryName;
-                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                        //issues pinned
-                        for (DataSnapshot issue : ownerRepositories.getChildren()) {
+                    //owners of all repos with pinned issues
+                    for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                        String owner = pinnedIssueSnapshot.getKey();
 
-                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
-                                    issue.getValue(Integer.class), 2));
+                        //repositories that have pinned issues
+                        for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
+                            String repositoryName = ownerRepositories.getKey();
+                            String fullName = owner + "/" + repositoryName;
+                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+
+                            //issues pinned
+                            for (DataSnapshot issue : ownerRepositories.getChildren()) {
+
+                                pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                        issue.getValue(Integer.class), 2));
+
+                            }
 
                         }
 
                     }
+                    pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
 
                 }
-                pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
 
-            }
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            };
+            pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
 
-            }
-        };
-        pinnedIssues.addListenerForSingleValueEvent(pinnedIssueListener);
+        }
+        else {
+
+            pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+
+        }
 
     }
 
@@ -288,10 +335,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
 
         super.onResume();
-        refresh();
-        if (user != null) {
+        if (user != null && !firstRun) {
 
             loadPinnedIssues(user);
+
+        }
+        if (firstRun) {
+
+            firstRun = false;
 
         }
 
@@ -304,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.options_menu, menu);
 
         //Find the menu search item
-        final MenuItem searchItem = menu.findItem(R.id.action_search);
+        searchItem = menu.findItem(R.id.action_search);
 
         //get the searchView from the search item
         SearchView searchView = (SearchView) searchItem.getActionView();
@@ -324,6 +375,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {
 
+                    visibleRepositories = null;
                     searchRepositories();
 
                 }
@@ -339,6 +391,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onMenuItemActionCollapse(MenuItem item) {
 
                 currentList = "pinned";
+                visibleRepositories = null;
                 loadPinnedRepositories();
                 return true;
 
@@ -353,6 +406,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
+
+        if (loadSearch) {
+
+            searchItem.expandActionView();
+            searchText.setText(searchTextString);
+
+        }
 
         return super.onCreateOptionsMenu(menu);
 
@@ -378,90 +438,102 @@ public class MainActivity extends AppCompatActivity {
      */
     private void searchRepositories() {
 
-        swipeRefresh.setRefreshing(true);
+        if (visibleRepositories == null) {
+            swipeRefresh.setRefreshing(true);
 
-        repositoryAdapter.updateContents(null);
+            repositoryAdapter.updateContents(null);
 
-        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
 
-        if (imm != null && imm.isAcceptingText()) {
+            if (imm != null && imm.isAcceptingText()) {
 
-            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+                imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+            }
+
+            service.searchRepositories(searchText.getText().toString())
+                    .enqueue(new Callback<SearchResult>() {
+
+                        @Override
+                        public void onResponse(Call<SearchResult> call,
+                                               Response<SearchResult> response) {
+
+                            if (response.code() == 401) {
+
+                                Gson gson = new Gson();
+                                APIRequestError error = null;
+                                try {
+                                    error = gson.fromJson(response.errorBody().string(),
+                                            APIRequestError.class);
+                                }
+                                catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                if (error.getMessage().equals("Bad credentials")) {
+
+                                    new AlertDialog.Builder(MainActivity.this)
+                                            .setTitle("Login " + "Credentials Expired").setMessage(
+                                            "Your login credentials have expired, please log in " +
+                                                    "again")
+                                            .setPositiveButton("Ok", new OnClickListener() {
+
+                                                @Override
+                                                public void onClick(DialogInterface dialog,
+                                                                    int which) {
+
+                                                    SharedPreferences preferences =
+                                                            PreferenceManager
+                                                                    .getDefaultSharedPreferences(
+                                                                            MainActivity.this);
+                                                    Editor editor = preferences.edit();
+                                                    editor.putString("OAuth_token", null);
+                                                    editor.apply();
+                                                    FirebaseAuth.getInstance().signOut();
+
+                                                    Intent logoutIntent =
+                                                            new Intent(MainActivity.this,
+                                                                    LoginActivity.class);
+                                                    logoutIntent.addFlags(
+                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                    dialog.dismiss();
+                                                    MainActivity.this.startActivity(logoutIntent);
+
+                                                }
+
+                                            }).create().show();
+
+                                }
+
+                            }
+                            else {
+
+                                SearchResult results = response.body();
+
+                                if (results != null) {
+
+                                    visibleRepositories = results.getItems();
+                                    repositoryAdapter.updateContents(visibleRepositories);
+
+                                }
+                                swipeRefresh.setRefreshing(false);
+
+                            }
+
+                        }
+
+                        @Override
+                        public void onFailure(Call<SearchResult> call, Throwable t) {
+
+                        }
+
+                    });
         }
+        else {
 
-        service.searchRepositories(searchText.getText().toString())
-                .enqueue(new Callback<SearchResult>() {
+            repositoryAdapter.updateContents(visibleRepositories);
 
-                    @Override
-                    public void onResponse(Call<SearchResult> call,
-                                           Response<SearchResult> response) {
-
-                        if (response.code() == 401) {
-
-                            Gson gson = new Gson();
-                            APIRequestError error = null;
-                            try {
-                                error = gson.fromJson(response.errorBody().string(),
-                                        APIRequestError.class);
-                            }
-                            catch (IOException e) {
-                                e.printStackTrace();
-                            }
-
-                            if (error.getMessage().equals("Bad credentials")) {
-
-                                new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("Login Credentials Expired").setMessage(
-                                        "Your login credentials have expired, please log in again")
-                                        .setPositiveButton("Ok", new OnClickListener() {
-
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-
-                                                SharedPreferences preferences = PreferenceManager
-                                                        .getDefaultSharedPreferences(
-                                                                MainActivity.this);
-                                                Editor editor = preferences.edit();
-                                                editor.putString("OAuth_token", null);
-                                                editor.apply();
-                                                FirebaseAuth.getInstance().signOut();
-
-                                                Intent logoutIntent = new Intent(MainActivity.this,
-                                                        LoginActivity.class);
-                                                logoutIntent.addFlags(
-                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                dialog.dismiss();
-                                                MainActivity.this.startActivity(logoutIntent);
-
-                                            }
-
-                                        }).create().show();
-
-                            }
-
-                        }
-                        else {
-
-                            SearchResult results = response.body();
-
-                            if (results != null) {
-
-                                repositoryAdapter.updateContents(results.getItems());
-
-                            }
-                            swipeRefresh.setRefreshing(false);
-
-                        }
-
-                    }
-
-                    @Override
-                    public void onFailure(Call<SearchResult> call, Throwable t) {
-
-                    }
-
-                });
+        }
 
     }
 
@@ -484,4 +556,20 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+
+        super.onSaveInstanceState(outState);
+        outState.putParcelable("user", user);
+        outState.putParcelableArrayList("pinned_issues", pinnedIssueMenuItems);
+        outState.putParcelableArrayList("visible_repositories", visibleRepositories);
+        if (searchText != null && currentList.equals("search")) {
+            outState.putBoolean("load_search", true);
+            outState.putString("search_text", searchText.getText().toString());
+        }
+        else {
+            outState.putBoolean("load_search", false);
+        }
+
+    }
 }
