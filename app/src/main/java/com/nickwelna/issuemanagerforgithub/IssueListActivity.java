@@ -49,6 +49,7 @@ public class IssueListActivity extends AppCompatActivity {
     String repositoryName;
     GitHubService service;
     SharedPreferences preferences;
+    GithubUser user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +58,7 @@ public class IssueListActivity extends AppCompatActivity {
         setContentView(R.layout.activity_issue_list);
         Bundle extras = getIntent().getExtras();
         repositoryName = extras.getString("repository");
+        user = extras.getParcelable("user");
         ButterKnife.bind(this);
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(repositoryName);
@@ -75,7 +77,7 @@ public class IssueListActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.colorAccent);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         issue_recycler_view.setLayoutManager(linearLayoutManager);
-        issueAdapter = new IssueAdapter(repositoryName);
+        issueAdapter = new IssueAdapter(repositoryName, user);
         issue_recycler_view.setAdapter(issueAdapter);
 
         addIssue.setOnClickListener(new OnClickListener() {
@@ -101,23 +103,7 @@ public class IssueListActivity extends AppCompatActivity {
         String token = preferences.getString("OAuth_token", null);
 
         service = ServiceGenerator.createService(token);
-        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
-
-            @Override
-            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
-
-                loadPinnedIssues(response.body());
-
-            }
-
-            @Override
-            public void onFailure(Call<GithubUser> call, Throwable t) {
-
-            }
-        });
-
-        swipeRefresh.setRefreshing(true);
-        loadIssues();
+        loadPinnedIssues(user);
 
     }
 
@@ -178,11 +164,8 @@ public class IssueListActivity extends AppCompatActivity {
     protected void onResume() {
 
         super.onResume();
-        if (!addIssue.isShown() && !firstRun) {
-
-            addIssue.show();
-
-        }
+        swipeRefresh.setRefreshing(true);
+        loadIssues();
 
     }
 

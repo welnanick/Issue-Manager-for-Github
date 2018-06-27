@@ -21,12 +21,17 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Comment;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.models.IssueCloseOpenRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
+
+import java.io.IOException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -55,6 +60,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     boolean firstRun = true;
     GitHubService service;
     SharedPreferences preferences;
+    GithubUser user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +74,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         issue = extras.getParcelable("Issue");
         repositoryName = extras.getString("repo-name");
         fromPinned = extras.getBoolean("from-pinned");
+        user = extras.getParcelable("user");
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(issue.getTitle());
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -77,7 +84,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
             @Override
             public void onRefresh() {
 
-                loadComments();
+                refreshIssue();
 
             }
 
@@ -85,7 +92,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.colorAccent);
         swipeRefresh.setRefreshing(true);
         commentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        commentAdapter = new CommentAdapter();
+        commentAdapter = new CommentAdapter(repositoryName, user);
         commentRecyclerView.setAdapter(commentAdapter);
 
         addComment.setOnClickListener(new OnClickListener() {
@@ -98,6 +105,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 Bundle extras = new Bundle();
                 extras.putString("action", "add");
                 extras.putString("type", "comment");
+                extras.putInt("issue_number", issue.getNumber());
+                extras.putString("repo_name", repositoryName);
                 addCommentIntent.putExtras(extras);
                 startActivity(addCommentIntent);
 
@@ -110,21 +119,31 @@ public class IssueDetailsActivity extends AppCompatActivity {
         String token = preferences.getString("OAuth_token", null);
 
         service = ServiceGenerator.createService(token);
-        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
-
-            @Override
-            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
-
-                loadPinnedIssues(response.body());
-
-            }
-
-            @Override
-            public void onFailure(Call<GithubUser> call, Throwable t) {
-
-            }
-        });
+        loadPinnedIssues(user);
         loadComments();
+
+    }
+
+    public void refreshIssue() {
+
+        String[] repoNameSplit = repositoryName.split("/");
+        service.getIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                .enqueue(new Callback<Issue>() {
+
+                    @Override
+                    public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                        issue = response.body();
+                        invalidateOptionsMenu();
+                        loadComments();
+
+                    }
+
+                    @Override
+                    public void onFailure(Call<Issue> call, Throwable t) {
+
+                    }
+                });
 
     }
 
@@ -201,6 +220,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         Bundle extras = new Bundle();
         extras.putString("repository", repositoryName);
+        extras.putParcelable("user", user);
         parentIntent.putExtras(extras);
 
         return parentIntent;
@@ -244,30 +264,197 @@ public class IssueDetailsActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
+        String[] repoNameSplit = repositoryName.split("/");
         switch (item.getItemId()) {
 
             case R.id.action_close_open:
+                swipeRefresh.setRefreshing(true);
+                IssueCloseOpenRequest closeOpenRequest = new IssueCloseOpenRequest();
                 if (issue.getState().equals("closed")) {
 
-                    Toast.makeText(this, "Issue Opened", Toast.LENGTH_LONG).show();
+                    closeOpenRequest.setState("open");
+                    service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
+                            closeOpenRequest).enqueue(
+
+                            new Callback<Issue>() {
+
+                                @Override
+                                public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                                    if (response.code() == 200) {
+
+                                        issue = response.body();
+                                        invalidateOptionsMenu();
+                                        loadComments();
+                                        Toast.makeText(IssueDetailsActivity.this, "Issue Opened",
+                                                Toast.LENGTH_LONG).show();
+
+                                    }
+                                    else {
+
+                                        swipeRefresh.setRefreshing(false);
+                                        Gson gson = new Gson();
+                                        APIRequestError error = null;
+                                        try {
+                                            error = gson.fromJson(response.errorBody().string(),
+                                                    APIRequestError.class);
+                                        }
+                                        catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                error.getMessage(), Toast.LENGTH_LONG).show();
+
+                                    }
+
+                                }
+
+                                @Override
+                                public void onFailure(Call<Issue> call, Throwable t) {
+
+                                }
+                            });
 
                 }
                 else {
 
-                    Toast.makeText(this, "Issue Closed", Toast.LENGTH_LONG).show();
+                    closeOpenRequest.setState("closed");
+                    service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
+                            closeOpenRequest).enqueue(
+
+                            new Callback<Issue>() {
+
+                                @Override
+                                public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                                    if (response.code() == 200) {
+
+                                        issue = response.body();
+                                        invalidateOptionsMenu();
+                                        loadComments();
+                                        Toast.makeText(IssueDetailsActivity.this, "Issue Closed",
+                                                Toast.LENGTH_LONG).show();
+
+                                    }
+                                    else {
+
+                                        swipeRefresh.setRefreshing(false);
+                                        Gson gson = new Gson();
+                                        APIRequestError error = null;
+                                        try {
+                                            error = gson.fromJson(response.errorBody().string(),
+                                                    APIRequestError.class);
+                                        }
+                                        catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                error.getMessage(), Toast.LENGTH_LONG).show();
+
+                                    }
+
+                                }
+
+                                @Override
+                                public void onFailure(Call<Issue> call, Throwable t) {
+
+                                }
+                            });
 
                 }
                 return true;
 
             case R.id.action_lock_unlock:
+                swipeRefresh.setRefreshing(true);
                 if (issue.isLocked()) {
 
-                    Toast.makeText(this, "Issue Unlocked", Toast.LENGTH_LONG).show();
+                    service.unlockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                            .enqueue(
+
+                                    new Callback<Issue>() {
+
+                                        @Override
+                                        public void onResponse(Call<Issue> call,
+                                                               Response<Issue> response) {
+
+                                            if (response.code() == 204) {
+
+                                                refreshIssue();
+
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        "Issue Unlocked", Toast.LENGTH_LONG).show();
+
+                                            }
+                                            else {
+
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        error.getMessage(), Toast.LENGTH_LONG)
+                                                        .show();
+
+                                            }
+
+                                        }
+
+                                        @Override
+                                        public void onFailure(Call<Issue> call, Throwable t) {
+
+                                        }
+                                    });
 
                 }
                 else {
 
-                    Toast.makeText(this, "Issue locked", Toast.LENGTH_LONG).show();
+                    service.lockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                            .enqueue(
+
+                                    new Callback<Issue>() {
+
+                                        @Override
+                                        public void onResponse(Call<Issue> call,
+                                                               Response<Issue> response) {
+
+                                            if (response.code() == 204) {
+
+                                                refreshIssue();
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        "Issue Locked", Toast.LENGTH_LONG).show();
+
+                                            }
+                                            else {
+
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        error.getMessage(), Toast.LENGTH_LONG)
+                                                        .show();
+
+                                            }
+
+                                        }
+
+                                        @Override
+                                        public void onFailure(Call<Issue> call, Throwable t) {
+
+                                        }
+                                    });
 
                 }
                 return true;
@@ -297,6 +484,12 @@ public class IssueDetailsActivity extends AppCompatActivity {
         if (!addComment.isShown() && !firstRun) {
 
             addComment.show();
+
+        }
+        if (!firstRun) {
+
+            swipeRefresh.setRefreshing(true);
+            refreshIssue();
 
         }
 

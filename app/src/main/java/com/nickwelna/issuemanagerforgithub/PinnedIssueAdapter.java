@@ -161,7 +161,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
         }
 
-        void bind(final PinnedIssueMenuItem item, GithubUser user) {
+        void bind(final PinnedIssueMenuItem item, final GithubUser user) {
 
             switch (viewType) {
 
@@ -192,6 +192,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                             Intent viewRepoIntent = new Intent(context, IssueListActivity.class);
                             Bundle extras = new Bundle();
                             extras.putString("repository", item.text);
+                            extras.putParcelable("user", user);
                             viewRepoIntent.putExtras(extras);
                             context.startActivity(viewRepoIntent);
 
@@ -224,6 +225,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                             extras.putParcelable("Issue", issue);
                             extras.putBoolean("from-pinned", true);
                             extras.putString("repo-name", "JakeWharton/butterknife");
+                            extras.putParcelable("user", user);
                             viewIssueDetailsIntent.putExtras(extras);
                             context.startActivity(viewIssueDetailsIntent);
 

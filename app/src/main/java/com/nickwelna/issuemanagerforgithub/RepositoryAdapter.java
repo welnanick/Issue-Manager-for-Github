@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.nickwelna.issuemanagerforgithub.RepositoryAdapter.RepositoryViewHolder;
+import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 
 import butterknife.BindView;
@@ -20,6 +21,7 @@ import butterknife.ButterKnife;
 public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder> {
 
     Repository[] repositories;
+    GithubUser user;
 
     @NonNull
     @Override
@@ -27,7 +29,7 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
 
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View itemView = inflater.inflate(R.layout.repository_list_item, parent, false);
-        return new RepositoryViewHolder(itemView, parent.getContext());
+        return new RepositoryViewHolder(itemView, parent.getContext(), user);
 
     }
 
@@ -61,19 +63,27 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
 
     }
 
+    public void updateUser(GithubUser user) {
+
+        this.user = user;
+
+    }
+
     static class RepositoryViewHolder extends RecyclerView.ViewHolder {
 
         @BindView(R.id.repository_name)
         TextView repositoryName;
         Context context;
         View itemView;
+        GithubUser user;
 
-        RepositoryViewHolder(View itemView, Context context) {
+        RepositoryViewHolder(View itemView, Context context, GithubUser user) {
 
             super(itemView);
             ButterKnife.bind(this, itemView);
             this.context = context;
             this.itemView = itemView;
+            this.user = user;
 
         }
 
@@ -88,6 +98,7 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
                     Intent viewRepositoryIntent = new Intent(context, IssueListActivity.class);
                     Bundle extras = new Bundle();
                     extras.putString("repository", repository.getFull_name());
+                    extras.putParcelable("user", user);
                     viewRepositoryIntent.putExtras(extras);
                     context.startActivity(viewRepositoryIntent);
 

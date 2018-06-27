@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     SharedPreferences preferences;
     GitHubService service;
     EditText searchText;
+    GithubUser user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +99,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
 
-                loadPinnedIssues(response.body());
+                user = response.body();
+                repositoryAdapter.updateUser(user);
+                loadPinnedIssues(user);
 
             }
 

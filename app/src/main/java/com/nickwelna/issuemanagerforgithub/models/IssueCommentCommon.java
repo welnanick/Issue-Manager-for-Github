@@ -26,4 +26,16 @@ public abstract class IssueCommentCommon implements Parcelable {
 
     }
 
+    public int getId() {
+
+        return id;
+
+    }
+
+    public String getCreatedAt() {
+
+        return created_at;
+
+    }
+
 }

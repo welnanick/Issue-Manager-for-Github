@@ -1,6 +1,6 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-public class AuthorizationResponseUnsuccessful {
+public class APIRequestError {
 
     String message;
     String documentation_url;

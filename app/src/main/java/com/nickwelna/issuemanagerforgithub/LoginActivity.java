@@ -23,9 +23,9 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GithubAuthProvider;
 import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequest;
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponse;
-import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponseUnsuccessful;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
@@ -116,11 +116,11 @@ public class LoginActivity extends AppCompatActivity {
                                 progressBar.setVisibility(View.GONE);
 
                                 Gson gson = new Gson();
-                                AuthorizationResponseUnsuccessful responseUnsuccessful = null;
+                                APIRequestError responseUnsuccessful = null;
                                 try {
                                     responseUnsuccessful =
                                             gson.fromJson(response.errorBody().string(),
-                                                    AuthorizationResponseUnsuccessful.class);
+                                                    APIRequestError.class);
                                 }
                                 catch (IOException e) {
                                     e.printStackTrace();
@@ -183,11 +183,11 @@ public class LoginActivity extends AppCompatActivity {
                                 twoFactorInputLayout.setVisibility(View.VISIBLE);
                                 progressBar.setVisibility(View.GONE);
                                 Gson gson = new Gson();
-                                AuthorizationResponseUnsuccessful responseUnsuccessful = null;
+                                APIRequestError responseUnsuccessful = null;
                                 try {
                                     responseUnsuccessful =
                                             gson.fromJson(response.errorBody().string(),
-                                                    AuthorizationResponseUnsuccessful.class);
+                                                    APIRequestError.class);
                                 }
                                 catch (IOException e) {
                                     e.printStackTrace();

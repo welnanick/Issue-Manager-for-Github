@@ -13,6 +13,7 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.nickwelna.issuemanagerforgithub.models.CommentAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
@@ -38,6 +39,8 @@ public class EditCommentActivity extends AppCompatActivity {
     GitHubService service;
     SharedPreferences preferences;
     String repositoryName;
+    int commentId;
+    int issueNumber;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +54,8 @@ public class EditCommentActivity extends AppCompatActivity {
         final String type = extras.getString("type");
         IssueCommentCommon comment = extras.getParcelable("comment");
         repositoryName = extras.getString("repo_name");
+        issueNumber = extras.getInt("issue_number");
+        commentId = extras.getInt("comment_id");
         StringBuilder titleBuilder = new StringBuilder();
         switch (action) {
 
@@ -115,10 +120,10 @@ public class EditCommentActivity extends AppCompatActivity {
                     case "issue":
 
                         String[] repoNameSplit = repositoryName.split("/");
-                        IssueAddEditRequest request = new IssueAddEditRequest();
-                        request.setTitle(titleEditText.getText().toString());
-                        request.setBody(bodyEditText.getText().toString());
-                        service.addIssue(repoNameSplit[0], repoNameSplit[1], request)
+                        IssueAddEditRequest issueRequest = new IssueAddEditRequest();
+                        issueRequest.setTitle(titleEditText.getText().toString());
+                        issueRequest.setBody(bodyEditText.getText().toString());
+                        service.addIssue(repoNameSplit[0], repoNameSplit[1], issueRequest)
                                 .enqueue(new Callback<Issue>() {
 
                                     @Override
@@ -135,20 +140,91 @@ public class EditCommentActivity extends AppCompatActivity {
                                     public void onFailure(Call<Issue> call, Throwable t) {
 
                                     }
-                                });
 
+                                });
                         break;
 
                     case "comment":
 
+                        repoNameSplit = repositoryName.split("/");
+                        CommentAddEditRequest commentRequest = new CommentAddEditRequest();
+                        commentRequest.setBody(bodyEditText.getText().toString());
+                        service.addComment(repoNameSplit[0], repoNameSplit[1], issueNumber,
+                                commentRequest).enqueue(new Callback<Issue>() {
+
+                            @Override
+                            public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                                Toast.makeText(EditCommentActivity.this, "New Comment submitted",
+                                        Toast.LENGTH_LONG).show();
+                                finish();
+
+                            }
+
+                            @Override
+                            public void onFailure(Call<Issue> call, Throwable t) {
+
+                            }
+
+                        });
                         break;
 
                 }
 
             case "edit":
-                Toast.makeText(this, "Comment edit submitted", Toast.LENGTH_LONG).show();
-                finish();
-                break;
+                switch (type) {
+
+                    case "issue":
+
+                        String[] repoNameSplit = repositoryName.split("/");
+                        IssueAddEditRequest issueRequest = new IssueAddEditRequest();
+                        issueRequest.setTitle(titleEditText.getText().toString());
+                        issueRequest.setBody(bodyEditText.getText().toString());
+                        service.editIssue(repoNameSplit[0], repoNameSplit[1], issueNumber,
+                                issueRequest).enqueue(new Callback<Issue>() {
+
+                            @Override
+                            public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                                Toast.makeText(EditCommentActivity.this, "Issue changes submitted",
+                                        Toast.LENGTH_LONG).show();
+                                finish();
+
+                            }
+
+                            @Override
+                            public void onFailure(Call<Issue> call, Throwable t) {
+
+                            }
+                        });
+
+                        break;
+
+                    case "comment":
+
+                        repoNameSplit = repositoryName.split("/");
+                        CommentAddEditRequest commentRequest = new CommentAddEditRequest();
+                        commentRequest.setBody(bodyEditText.getText().toString());
+                        service.editComment(repoNameSplit[0], repoNameSplit[1], commentId,
+                                commentRequest).enqueue(new Callback<Issue>() {
+
+                            @Override
+                            public void onResponse(Call<Issue> call, Response<Issue> response) {
+
+                                Toast.makeText(EditCommentActivity.this,
+                                        "Comment changes submitted", Toast.LENGTH_LONG).show();
+                                finish();
+
+                            }
+
+                            @Override
+                            public void onFailure(Call<Issue> call, Throwable t) {
+
+                            }
+                        });
+
+                        break;
+                }
 
         }
 
