@@ -74,6 +74,7 @@ public class IssueListActivity extends AppCompatActivity {
     ArrayList<PinnedIssueMenuItem> pinnedIssueMenuItems;
     ArrayList<Issue> issues;
     boolean firstRun;
+    boolean rotated;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +91,7 @@ public class IssueListActivity extends AppCompatActivity {
             pinnedIssueMenuItems = savedInstanceState.getParcelableArrayList("pinned_issues");
             issues = savedInstanceState.getParcelableArrayList("issues");
             pinnedRepositories = savedInstanceState.getParcelableArrayList("pinned_repositories");
+            rotated = true;
 
         }
         else {
@@ -217,7 +219,7 @@ public class IssueListActivity extends AppCompatActivity {
 
     private void refreshPinnedRepositories() {
 
-        if (pinnedRepositories == null) {
+        if (pinnedRepositories == null || !rotated) {
 
             DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
             ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
@@ -260,7 +262,7 @@ public class IssueListActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null) {
+        if (pinnedIssueMenuItems == null || !rotated) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
@@ -314,7 +316,7 @@ public class IssueListActivity extends AppCompatActivity {
 
     private void loadIssues() {
 
-        if (issues == null) {
+        if (issues == null || !rotated) {
             String[] repoNameSplit = repositoryName.split("/");
 
             service.getIssues(repoNameSplit[0], repoNameSplit[1], "all")
@@ -417,6 +419,7 @@ public class IssueListActivity extends AppCompatActivity {
             firstRun = false;
 
         }
+        rotated = false;
 
     }
 
@@ -438,7 +441,7 @@ public class IssueListActivity extends AppCompatActivity {
         if (isPinned()) {
 
             pinUnpin.setTitle("Unpin issue");
-            pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
+            pinUnpin.setIcon(R.drawable.ic_thumbtack_off_white_24dp);
 
         }
 

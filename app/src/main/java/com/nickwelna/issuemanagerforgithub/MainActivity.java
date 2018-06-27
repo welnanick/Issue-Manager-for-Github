@@ -84,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
     MenuItem searchItem;
     boolean loadSearch = false;
     String searchTextString;
+    boolean rotated;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
             visibleRepositories = savedInstanceState.getParcelableArrayList("visible_repositories");
             loadSearch = savedInstanceState.getBoolean("load_search");
             searchTextString = savedInstanceState.getString("search_text");
+            rotated = true;
 
         }
 
@@ -228,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadPinnedRepositories() {
 
-        if (visibleRepositories == null || refreshRequested) {
+        if (visibleRepositories == null || refreshRequested || !rotated) {
 
             DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
             ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
@@ -279,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null) {
+        if (pinnedIssueMenuItems == null || !rotated) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
@@ -343,6 +345,16 @@ public class MainActivity extends AppCompatActivity {
         if (firstRun) {
 
             firstRun = false;
+
+        }
+        if (!rotated) {
+
+            refresh();
+
+        }
+        if (rotated) {
+
+            rotated = false;
 
         }
 
@@ -438,7 +450,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void searchRepositories() {
 
-        if (visibleRepositories == null) {
+        if (visibleRepositories == null || !rotated) {
             swipeRefresh.setRefreshing(true);
 
             repositoryAdapter.updateContents(null);

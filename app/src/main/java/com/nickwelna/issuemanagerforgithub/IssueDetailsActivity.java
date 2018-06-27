@@ -80,6 +80,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     ArrayList<PinnedIssueMenuItem> pinnedIssueMenuItems;
     IssueCommentCommon[] allComments;
     boolean pinned;
+    boolean rotated;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +102,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                     (IssueCommentCommon[]) savedInstanceState.getParcelableArray("all_comments");
             issue = savedInstanceState.getParcelable("issue");
             pinnedIssues = savedInstanceState.getIntegerArrayList("pinned_issues");
+            rotated = true;
 
         }
         else {
@@ -318,7 +320,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null) {
+        if (pinnedIssueMenuItems == null || !rotated) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssues = new ArrayList<>();
@@ -376,7 +378,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private void loadComments() {
 
-        if (allComments == null) {
+        if (allComments == null || !rotated) {
             String[] repoNameSplit = repositoryName.split("/");
 
             service.getComments(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
@@ -1069,6 +1071,11 @@ public class IssueDetailsActivity extends AppCompatActivity {
         else {
 
             firstRun = false;
+
+        }
+        if (rotated) {
+
+            rotated = false;
 
         }
 
