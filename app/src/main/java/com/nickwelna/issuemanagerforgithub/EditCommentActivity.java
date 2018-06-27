@@ -1,7 +1,9 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.TextInputEditText;
@@ -16,12 +18,17 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.CommentAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
+
+import java.io.IOException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -176,9 +183,74 @@ public class EditCommentActivity extends AppCompatActivity {
                                     public void onResponse(Call<Issue> call,
                                                            Response<Issue> response) {
 
-                                        Toast.makeText(EditCommentActivity.this,
-                                                "New Issue submitted", Toast.LENGTH_LONG).show();
-                                        finish();
+                                        if (response.code() == 401) {
+
+                                            Gson gson = new Gson();
+                                            APIRequestError error = null;
+                                            try {
+                                                error = gson.fromJson(response.errorBody().string(),
+                                                        APIRequestError.class);
+                                            }
+                                            catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            if (error.getMessage().equals("Bad credentials")) {
+
+                                                new AlertDialog.Builder(EditCommentActivity.this)
+                                                        .setTitle("Login Credentials Expired")
+                                                        .setMessage("Your login credentials have " +
+                                                                "expired, please log in " + "again")
+                                                        .setPositiveButton("Ok",
+                                                                new DialogInterface
+                                                                        .OnClickListener() {
+
+                                                                    @Override
+                                                                    public void onClick(
+                                                                            DialogInterface dialog,
+                                                                            int which) {
+
+                                                                        SharedPreferences
+                                                                                preferences =
+                                                                                PreferenceManager
+                                                                                        .getDefaultSharedPreferences(
+                                                                                                EditCommentActivity.this);
+                                                                        Editor editor =
+                                                                                preferences.edit();
+                                                                        editor.putString(
+                                                                                "OAuth_token",
+                                                                                null);
+                                                                        editor.apply();
+                                                                        FirebaseAuth.getInstance()
+                                                                                .signOut();
+
+                                                                        Intent logoutIntent =
+                                                                                new Intent(
+                                                                                        EditCommentActivity.this,
+                                                                                        LoginActivity.class);
+                                                                        logoutIntent.addFlags(
+                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                        dialog.dismiss();
+                                                                        EditCommentActivity.this
+                                                                                .startActivity(
+                                                                                        logoutIntent);
+
+                                                                    }
+
+                                                                }).create().show();
+
+                                            }
+
+                                        }
+                                        else {
+
+                                            Toast.makeText(EditCommentActivity.this,
+                                                    "New Issue submitted", Toast.LENGTH_LONG)
+                                                    .show();
+                                            finish();
+
+                                        }
 
                                     }
 
@@ -201,9 +273,68 @@ public class EditCommentActivity extends AppCompatActivity {
                             @Override
                             public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                Toast.makeText(EditCommentActivity.this, "New Comment submitted",
-                                        Toast.LENGTH_LONG).show();
-                                finish();
+                                if (response.code() == 401) {
+
+                                    Gson gson = new Gson();
+                                    APIRequestError error = null;
+                                    try {
+                                        error = gson.fromJson(response.errorBody().string(),
+                                                APIRequestError.class);
+                                    }
+                                    catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    if (error.getMessage().equals("Bad credentials")) {
+
+                                        new AlertDialog.Builder(EditCommentActivity.this)
+                                                .setTitle("Login Credentials Expired").setMessage(
+                                                "Your login credentials have " +
+                                                        "expired, please log in " + "again")
+                                                .setPositiveButton("Ok",
+                                                        new DialogInterface.OnClickListener() {
+
+                                                            @Override
+                                                            public void onClick(
+                                                                    DialogInterface dialog,
+                                                                    int which) {
+
+                                                                SharedPreferences preferences =
+                                                                        PreferenceManager
+                                                                                .getDefaultSharedPreferences(
+                                                                                        EditCommentActivity.this);
+                                                                Editor editor = preferences.edit();
+                                                                editor.putString("OAuth_token",
+                                                                        null);
+                                                                editor.apply();
+                                                                FirebaseAuth.getInstance()
+                                                                        .signOut();
+
+                                                                Intent logoutIntent = new Intent(
+                                                                        EditCommentActivity.this,
+                                                                        LoginActivity.class);
+                                                                logoutIntent.addFlags(
+                                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                dialog.dismiss();
+                                                                EditCommentActivity.this
+                                                                        .startActivity(
+                                                                                logoutIntent);
+
+                                                            }
+
+                                                        }).create().show();
+
+                                    }
+
+                                }
+                                else {
+
+                                    Toast.makeText(EditCommentActivity.this,
+                                            "New Comment " + "submitted", Toast.LENGTH_LONG).show();
+                                    finish();
+
+                                }
 
                             }
 
@@ -232,9 +363,68 @@ public class EditCommentActivity extends AppCompatActivity {
                             @Override
                             public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                Toast.makeText(EditCommentActivity.this, "Issue changes submitted",
-                                        Toast.LENGTH_LONG).show();
-                                finish();
+                                if (response.code() == 401) {
+
+                                    Gson gson = new Gson();
+                                    APIRequestError error = null;
+                                    try {
+                                        error = gson.fromJson(response.errorBody().string(),
+                                                APIRequestError.class);
+                                    }
+                                    catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    if (error.getMessage().equals("Bad credentials")) {
+
+                                        new AlertDialog.Builder(EditCommentActivity.this)
+                                                .setTitle("Login Credentials Expired").setMessage(
+                                                "Your login credentials have " +
+                                                        "expired, please log in " + "again")
+                                                .setPositiveButton("Ok",
+                                                        new DialogInterface.OnClickListener() {
+
+                                                            @Override
+                                                            public void onClick(
+                                                                    DialogInterface dialog,
+                                                                    int which) {
+
+                                                                SharedPreferences preferences =
+                                                                        PreferenceManager
+                                                                                .getDefaultSharedPreferences(
+                                                                                        EditCommentActivity.this);
+                                                                Editor editor = preferences.edit();
+                                                                editor.putString("OAuth_token",
+                                                                        null);
+                                                                editor.apply();
+                                                                FirebaseAuth.getInstance()
+                                                                        .signOut();
+
+                                                                Intent logoutIntent = new Intent(
+                                                                        EditCommentActivity.this,
+                                                                        LoginActivity.class);
+                                                                logoutIntent.addFlags(
+                                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                dialog.dismiss();
+                                                                EditCommentActivity.this
+                                                                        .startActivity(
+                                                                                logoutIntent);
+
+                                                            }
+
+                                                        }).create().show();
+
+                                    }
+
+                                }
+                                else {
+
+                                    Toast.makeText(EditCommentActivity.this,
+                                            "Issue changes submitted", Toast.LENGTH_LONG).show();
+                                    finish();
+
+                                }
 
                             }
 
@@ -257,9 +447,68 @@ public class EditCommentActivity extends AppCompatActivity {
                             @Override
                             public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                Toast.makeText(EditCommentActivity.this,
-                                        "Comment changes submitted", Toast.LENGTH_LONG).show();
-                                finish();
+                                if (response.code() == 401) {
+
+                                    Gson gson = new Gson();
+                                    APIRequestError error = null;
+                                    try {
+                                        error = gson.fromJson(response.errorBody().string(),
+                                                APIRequestError.class);
+                                    }
+                                    catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    if (error.getMessage().equals("Bad credentials")) {
+
+                                        new AlertDialog.Builder(EditCommentActivity.this)
+                                                .setTitle("Login Credentials Expired").setMessage(
+                                                "Your login credentials have " +
+                                                        "expired, please log in " + "again")
+                                                .setPositiveButton("Ok",
+                                                        new DialogInterface.OnClickListener() {
+
+                                                            @Override
+                                                            public void onClick(
+                                                                    DialogInterface dialog,
+                                                                    int which) {
+
+                                                                SharedPreferences preferences =
+                                                                        PreferenceManager
+                                                                                .getDefaultSharedPreferences(
+                                                                                        EditCommentActivity.this);
+                                                                Editor editor = preferences.edit();
+                                                                editor.putString("OAuth_token",
+                                                                        null);
+                                                                editor.apply();
+                                                                FirebaseAuth.getInstance()
+                                                                        .signOut();
+
+                                                                Intent logoutIntent = new Intent(
+                                                                        EditCommentActivity.this,
+                                                                        LoginActivity.class);
+                                                                logoutIntent.addFlags(
+                                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                dialog.dismiss();
+                                                                EditCommentActivity.this
+                                                                        .startActivity(
+                                                                                logoutIntent);
+
+                                                            }
+
+                                                        }).create().show();
+
+                                    }
+
+                                }
+                                else {
+
+                                    Toast.makeText(EditCommentActivity.this,
+                                            "Comment changes submitted", Toast.LENGTH_LONG).show();
+                                    finish();
+
+                                }
 
                             }
 

@@ -10,6 +10,7 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,12 +22,15 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.PinnedIssueAdapter.PinnedIssueViewHolder;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
+import java.io.IOException;
 import java.util.List;
 
 import butterknife.BindView;
@@ -220,28 +224,88 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                 @Override
                                 public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                    final Issue issue = response.body();
-                                    text.setText(issue.getTitle());
-                                    subText.setText("# " + issue.getNumber());
-                                    itemView.setOnClickListener(new OnClickListener() {
+                                    if (response.code() == 401) {
 
-                                        @Override
-                                        public void onClick(View v) {
+                                        Gson gson = new Gson();
+                                        APIRequestError error = null;
+                                        try {
+                                            error = gson.fromJson(response.errorBody().string(),
+                                                    APIRequestError.class);
+                                        }
+                                        catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
 
-                                            Intent viewIssueDetailsIntent =
-                                                    new Intent(context, IssueDetailsActivity.class);
+                                        if (error.getMessage().equals("Bad credentials")) {
 
-                                            Bundle extras = new Bundle();
-                                            extras.putParcelable("Issue", issue);
-                                            extras.putBoolean("from-pinned", true);
-                                            extras.putString("repo-name", item.text);
-                                            extras.putParcelable("user", user);
-                                            viewIssueDetailsIntent.putExtras(extras);
-                                            context.startActivity(viewIssueDetailsIntent);
+                                            new Builder(context)
+                                                    .setTitle("Login Credentials Expired")
+                                                    .setMessage("Your login credentials have " +
+                                                            "expired, please log in " + "again")
+                                                    .setPositiveButton("Ok",
+                                                            new DialogInterface.OnClickListener() {
+
+                                                                @Override
+                                                                public void onClick(
+                                                                        DialogInterface dialog,
+                                                                        int which) {
+
+                                                                    SharedPreferences preferences =
+                                                                            PreferenceManager
+                                                                                    .getDefaultSharedPreferences(
+                                                                                            context);
+                                                                    Editor editor =
+                                                                            preferences.edit();
+                                                                    editor.putString("OAuth_token",
+                                                                            null);
+                                                                    editor.apply();
+                                                                    FirebaseAuth.getInstance()
+                                                                            .signOut();
+
+                                                                    Intent logoutIntent =
+                                                                            new Intent(context,
+                                                                                    LoginActivity
+                                                                                            .class);
+                                                                    logoutIntent.addFlags(
+                                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                    dialog.dismiss();
+                                                                    context.startActivity(
+                                                                            logoutIntent);
+
+                                                                }
+
+                                                            }).create().show();
 
                                         }
 
-                                    });
+                                    }
+                                    else {
+
+                                        final Issue issue = response.body();
+                                        text.setText(issue.getTitle());
+                                        subText.setText("# " + issue.getNumber());
+                                        itemView.setOnClickListener(new OnClickListener() {
+
+                                            @Override
+                                            public void onClick(View v) {
+
+                                                Intent viewIssueDetailsIntent = new Intent(context,
+                                                        IssueDetailsActivity.class);
+
+                                                Bundle extras = new Bundle();
+                                                extras.putParcelable("Issue", issue);
+                                                extras.putBoolean("from-pinned", true);
+                                                extras.putString("repo-name", item.text);
+                                                extras.putParcelable("user", user);
+                                                viewIssueDetailsIntent.putExtras(extras);
+                                                context.startActivity(viewIssueDetailsIntent);
+
+                                            }
+
+                                        });
+
+                                    }
 
                                 }
 

@@ -1,7 +1,9 @@
 package com.nickwelna.issuemanagerforgithub;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -10,6 +12,7 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -26,12 +29,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -125,8 +131,57 @@ public class IssueListActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
 
-                    user = response.body();
-                    loadPinnedIssues(user);
+                    if (response.code() == 401) {
+
+                        Gson gson = new Gson();
+                        APIRequestError error = null;
+                        try {
+                            error = gson.fromJson(response.errorBody().string(),
+                                    APIRequestError.class);
+                        }
+                        catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        if (error.getMessage().equals("Bad credentials")) {
+
+                            new AlertDialog.Builder(IssueListActivity.this)
+                                    .setTitle("Login Credentials Expired").setMessage(
+                                    "Your login credentials have expired, please log in again")
+                                    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+
+                                            SharedPreferences preferences = PreferenceManager
+                                                    .getDefaultSharedPreferences(
+                                                            IssueListActivity.this);
+                                            Editor editor = preferences.edit();
+                                            editor.putString("OAuth_token", null);
+                                            editor.apply();
+                                            FirebaseAuth.getInstance().signOut();
+
+                                            Intent logoutIntent = new Intent(IssueListActivity.this,
+                                                    LoginActivity.class);
+                                            logoutIntent.addFlags(
+                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                            dialog.dismiss();
+                                            IssueListActivity.this.startActivity(logoutIntent);
+
+                                        }
+
+                                    }).create().show();
+
+                        }
+
+                    }
+                    else {
+
+                        user = response.body();
+                        loadPinnedIssues(user);
+
+                    }
 
                 }
 
@@ -237,11 +292,60 @@ public class IssueListActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<Issue[]> call, Response<Issue[]> response) {
 
-                        Issue[] issues = response.body();
-                        issueAdapter.updateIssues(issues);
-                        addIssue.show();
-                        firstRun = false;
-                        swipeRefresh.setRefreshing(false);
+                        if (response.code() == 401) {
+
+                            Gson gson = new Gson();
+                            APIRequestError error = null;
+                            try {
+                                error = gson.fromJson(response.errorBody().string(),
+                                        APIRequestError.class);
+                            }
+                            catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            if (error.getMessage().equals("Bad credentials")) {
+
+                                new AlertDialog.Builder(IssueListActivity.this)
+                                        .setTitle("Login Credentials Expired").setMessage(
+                                        "Your login credentials have expired, please log in again")
+                                        .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                                SharedPreferences preferences = PreferenceManager
+                                                        .getDefaultSharedPreferences(
+                                                                IssueListActivity.this);
+                                                Editor editor = preferences.edit();
+                                                editor.putString("OAuth_token", null);
+                                                editor.apply();
+                                                FirebaseAuth.getInstance().signOut();
+
+                                                Intent logoutIntent = new Intent(IssueListActivity.this,
+                                                        LoginActivity.class);
+                                                logoutIntent.addFlags(
+                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                dialog.dismiss();
+                                                IssueListActivity.this.startActivity(logoutIntent);
+
+                                            }
+
+                                        }).create().show();
+
+                            }
+
+                        }
+                        else {
+
+                            Issue[] issues = response.body();
+                            issueAdapter.updateIssues(issues);
+                            addIssue.show();
+                            firstRun = false;
+                            swipeRefresh.setRefreshing(false);
+
+                        }
 
                     }
 

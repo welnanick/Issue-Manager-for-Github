@@ -4,10 +4,12 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.widget.RecyclerView;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
@@ -21,7 +23,10 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.CommentAdapter.CommentViewHolder;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Comment;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
@@ -29,6 +34,7 @@ import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -204,13 +210,98 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                                                                                 Response<Issue>
                                                                                         response) {
 
-                                                                            Toast.makeText(context,
-                                                                                    "Comment Deleted",
-                                                                                    Toast.LENGTH_LONG)
-                                                                                    .show();
-                                                                            dialog.dismiss();
-                                                                            ((IssueDetailsActivity) context)
-                                                                                    .refreshIssue();
+                                                                            if (response.code() ==
+                                                                                    401) {
+
+                                                                                Gson gson =
+                                                                                        new Gson();
+                                                                                APIRequestError
+                                                                                        error =
+                                                                                        null;
+                                                                                try {
+                                                                                    error =
+                                                                                            gson.fromJson(
+                                                                                                    response.errorBody()
+                                                                                                            .string(),
+                                                                                                    APIRequestError.class);
+                                                                                }
+                                                                                catch (IOException e) {
+                                                                                    e.printStackTrace();
+                                                                                }
+
+                                                                                if (error
+                                                                                        .getMessage()
+                                                                                        .equals("Bad credentials")) {
+
+                                                                                    new Builder(
+                                                                                            context)
+                                                                                            .setTitle(
+                                                                                                    "Login Credentials Expired")
+                                                                                            .setMessage(
+                                                                                                    "Your login credentials have " +
+                                                                                                            "expired, please log in " +
+                                                                                                            "again")
+                                                                                            .setPositiveButton(
+                                                                                                    "Ok",
+                                                                                                    new DialogInterface.OnClickListener() {
+
+                                                                                                        @Override
+                                                                                                        public void onClick(
+                                                                                                                DialogInterface dialog,
+                                                                                                                int which) {
+
+                                                                                                            SharedPreferences
+                                                                                                                    preferences =
+                                                                                                                    PreferenceManager
+                                                                                                                            .getDefaultSharedPreferences(
+                                                                                                                                    context);
+                                                                                                            Editor
+                                                                                                                    editor =
+                                                                                                                    preferences
+                                                                                                                            .edit();
+                                                                                                            editor.putString(
+                                                                                                                    "OAuth_token",
+                                                                                                                    null);
+                                                                                                            editor.apply();
+                                                                                                            FirebaseAuth
+                                                                                                                    .getInstance()
+                                                                                                                    .signOut();
+
+                                                                                                            Intent
+                                                                                                                    logoutIntent =
+                                                                                                                    new Intent(
+                                                                                                                            context,
+                                                                                                                            LoginActivity.class);
+                                                                                                            logoutIntent
+                                                                                                                    .addFlags(
+                                                                                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                                                            dialog.dismiss();
+                                                                                                            context.startActivity(
+                                                                                                                    logoutIntent);
+
+                                                                                                        }
+
+                                                                                                    })
+                                                                                            .create()
+                                                                                            .show();
+
+                                                                                }
+
+                                                                            }
+                                                                            else {
+
+                                                                                Toast.makeText(
+                                                                                        context,
+                                                                                        "Comment Deleted",
+
+                                                                                        Toast.LENGTH_LONG)
+                                                                                        .show();
+                                                                                dialog.dismiss();
+                                                                                ((IssueDetailsActivity) context)
+                                                                                        .refreshIssue();
+
+                                                                            }
                                                                         }
 
                                                                         @Override
