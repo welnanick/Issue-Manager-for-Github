@@ -15,12 +15,14 @@ import com.nickwelna.issuemanagerforgithub.RepositoryAdapter.RepositoryViewHolde
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 
+import java.util.List;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder> {
 
-    Repository[] repositories;
+    List<Repository> repositories;
     GithubUser user;
 
     @NonNull
@@ -36,9 +38,9 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
     @Override
     public void onBindViewHolder(@NonNull RepositoryViewHolder holder, int position) {
 
-        if (repositories != null && repositories.length > 0) {
+        if (repositories != null && repositories.size() > 0) {
 
-            holder.bind(repositories[position]);
+            holder.bind(repositories.get(position));
 
         }
 
@@ -49,14 +51,14 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
 
         if (repositories != null) {
 
-            return repositories.length;
+            return repositories.size();
 
         }
         return 0;
 
     }
 
-    public void updateContents(Repository[] repositories) {
+    public void updateContents(List<Repository> repositories) {
 
         this.repositories = repositories;
         notifyDataSetChanged();

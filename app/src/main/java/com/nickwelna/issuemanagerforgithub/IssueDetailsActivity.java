@@ -21,6 +21,12 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Comment;
@@ -32,6 +38,8 @@ import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -61,6 +69,11 @@ public class IssueDetailsActivity extends AppCompatActivity {
     GitHubService service;
     SharedPreferences preferences;
     GithubUser user;
+    FirebaseDatabase database = FirebaseDatabase.getInstance();
+    FirebaseAuth auth = FirebaseAuth.getInstance();
+    DatabaseReference userDataReference =
+            database.getReference("users").child(auth.getCurrentUser().getUid());
+    boolean pinned;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,8 +132,30 @@ public class IssueDetailsActivity extends AppCompatActivity {
         String token = preferences.getString("OAuth_token", null);
 
         service = ServiceGenerator.createService(token);
-        loadPinnedIssues(user);
-        loadComments();
+        if (user == null) {
+            service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+                @Override
+                public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                    user = response.body();
+                    commentAdapter.user = user;
+                    loadPinnedIssues(user);
+                    loadComments();
+
+                }
+
+                @Override
+                public void onFailure(Call<GithubUser> call, Throwable t) {
+
+                }
+            });
+        }
+        else {
+            loadPinnedIssues(user);
+            loadComments();
+        }
+        isPinned();
 
     }
 
@@ -158,19 +193,46 @@ public class IssueDetailsActivity extends AppCompatActivity {
         menuRecyclerView.setLayoutManager(linearLayoutManager);
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
-        PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
-        pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
-        pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
-                "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
-                "#1293", 2);
-        pinnedIssueMenuItems[3] =
-                new PinnedIssueMenuItem("Multi module project with multiple R2 files", "#1292", 2);
-        pinnedIssueMenuItems[4] = new PinnedIssueMenuItem(
-                "Android Gradle plugin 3.1.0 must not be applied to project " +
-                        "'/Users/android_package/butterKnife/app' since version 3.1.0 was already" +
-                        " applied to this project", "#1290", 2);
-        pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+        final List<PinnedIssueMenuItem> pinnedIssueMenuItems = new ArrayList<>();
+        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
+
+        DatabaseReference pinnedIssues = userDataReference.child("pinned_issues");
+        ValueEventListener pinnedIssueListener = new ValueEventListener() {
+
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                //owners of all repos with pinned issues
+                for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                    String owner = pinnedIssueSnapshot.getKey();
+
+                    //repositories that have pinned issues
+                    for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
+                        String repositoryName = ownerRepositories.getKey();
+                        String fullName = owner + "/" + repositoryName;
+                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+
+                        //issues pinned
+                        for (DataSnapshot issue : ownerRepositories.getChildren()) {
+
+                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                    issue.getValue(Integer.class), 2));
+
+                        }
+
+                    }
+
+                }
+                pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };
+        pinnedIssues.addListenerForSingleValueEvent(pinnedIssueListener);
 
     }
 
@@ -244,7 +306,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
             lockUnlock.setTitle("Unlock Issue");
 
         }
-        if (isPinned()) {
+        if (pinned) {
 
             pinUnpin.setTitle("Unpin issue");
             pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
@@ -255,9 +317,35 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     }
 
-    private boolean isPinned() {
+    private void isPinned() {
 
-        return issue.getNumber() % 2 == 0;
+        DatabaseReference reference =
+                userDataReference.child("pinned_issues").child(repositoryName);
+
+        ValueEventListener issueCheckListener = new ValueEventListener() {
+
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                for (DataSnapshot issues : dataSnapshot.getChildren()) {
+
+                    if (issues.getValue(Integer.class).equals(issue.getNumber())) {
+
+                        pinned = true;
+                        invalidateOptionsMenu();
+
+                    }
+
+                }
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };
+        reference.addListenerForSingleValueEvent(issueCheckListener);
 
     }
 
@@ -459,13 +547,67 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 }
                 return true;
             case R.id.action_pin_unpin:
-                if (isPinned()) {
+                if (pinned) {
 
+                    DatabaseReference reference =
+                            userDataReference.child("pinned_issues").child(repositoryName);
+                    ValueEventListener issueCheckListener = new ValueEventListener() {
+
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                            for (DataSnapshot issues : dataSnapshot.getChildren()) {
+
+                                if (issues.getValue(Integer.class).equals(issue.getNumber())) {
+
+                                    pinned = false;
+                                    issues.getRef().removeValue();
+                                    invalidateOptionsMenu();
+
+                                }
+
+                            }
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    };
+                    reference.addListenerForSingleValueEvent(issueCheckListener);
                     Toast.makeText(this, "Issue Unpinned", Toast.LENGTH_LONG).show();
 
                 }
                 else {
 
+                    final DatabaseReference reference =
+                            userDataReference.child("pinned_issues").child(repositoryName);
+
+                    ValueEventListener issueCheckListener = new ValueEventListener() {
+
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                            int size = 0;
+
+                            for (DataSnapshot issues : dataSnapshot.getChildren()) {
+
+                                size++;
+
+                            }
+                            pinned = true;
+                            reference.child(String.valueOf(size)).setValue(issue.getNumber());
+                            invalidateOptionsMenu();
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    };
+                    reference.addListenerForSingleValueEvent(issueCheckListener);
                     Toast.makeText(this, "Issue pinned", Toast.LENGTH_LONG).show();
 
                 }

@@ -1,10 +1,12 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
+import java.util.List;
+
 public class SearchResult {
 
     public int total_count;
     boolean incomplete_results;
-    Repository[] items;
+    List<Repository> items;
 
     public int getTotal_count() {
 
@@ -18,7 +20,7 @@ public class SearchResult {
 
     }
 
-    public Repository[] getItems() {
+    public List<Repository> getItems() {
 
         return items;
 

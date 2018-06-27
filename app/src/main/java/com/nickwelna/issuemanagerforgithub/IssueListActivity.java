@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -19,10 +20,20 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -50,6 +61,11 @@ public class IssueListActivity extends AppCompatActivity {
     GitHubService service;
     SharedPreferences preferences;
     GithubUser user;
+    List<Repository> pinnedRepositories;
+    FirebaseDatabase database = FirebaseDatabase.getInstance();
+    FirebaseAuth auth = FirebaseAuth.getInstance();
+    DatabaseReference userDataReference =
+            database.getReference("users").child(auth.getCurrentUser().getUid());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,7 +119,57 @@ public class IssueListActivity extends AppCompatActivity {
         String token = preferences.getString("OAuth_token", null);
 
         service = ServiceGenerator.createService(token);
-        loadPinnedIssues(user);
+        if (user == null) {
+            service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+                @Override
+                public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                    user = response.body();
+                    loadPinnedIssues(user);
+
+                }
+
+                @Override
+                public void onFailure(Call<GithubUser> call, Throwable t) {
+
+                }
+            });
+        }
+        else {
+            loadPinnedIssues(user);
+        }
+
+        refreshPinnedRepositories();
+
+    }
+
+    private void refreshPinnedRepositories() {
+
+        DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
+        ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
+
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                pinnedRepositories = new ArrayList<>();
+                for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+
+                    Repository temp = new Repository();
+                    temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
+                    pinnedRepositories.add(temp);
+
+                }
+                invalidateOptionsMenu();
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };
+        pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
 
     }
 
@@ -118,19 +184,46 @@ public class IssueListActivity extends AppCompatActivity {
         menuRecyclerView.setLayoutManager(linearLayoutManager);
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
-        PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
-        pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
-        pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
-                "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
-                "#1293", 2);
-        pinnedIssueMenuItems[3] =
-                new PinnedIssueMenuItem("Multi module project with multiple R2 files", "#1292", 2);
-        pinnedIssueMenuItems[4] = new PinnedIssueMenuItem(
-                "Android Gradle plugin 3.1.0 must not be applied to project " +
-                        "'/Users/android_package/butterKnife/app' since version 3.1.0 was already" +
-                        " applied to this project", "#1290", 2);
-        pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+        final List<PinnedIssueMenuItem> pinnedIssueMenuItems = new ArrayList<>();
+        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
+
+        DatabaseReference pinnedIssues = userDataReference.child("pinned_issues");
+        ValueEventListener pinnedIssueListener = new ValueEventListener() {
+
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                //owners of all repos with pinned issues
+                for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                    String owner = pinnedIssueSnapshot.getKey();
+
+                    //repositories that have pinned issues
+                    for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
+                        String repositoryName = ownerRepositories.getKey();
+                        String fullName = owner + "/" + repositoryName;
+                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+
+                        //issues pinned
+                        for (DataSnapshot issue : ownerRepositories.getChildren()) {
+
+                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                    issue.getValue(Integer.class), 2));
+
+                        }
+
+                    }
+
+                }
+                pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };
+        pinnedIssues.addListenerForSingleValueEvent(pinnedIssueListener);
 
     }
 
@@ -197,7 +290,10 @@ public class IssueListActivity extends AppCompatActivity {
 
     private boolean isPinned() {
 
-        return repositoryName.length() % 2 == 0;
+        Repository repository = new Repository();
+        repository.setFullName(repositoryName);
+
+        return pinnedRepositories != null && pinnedRepositories.contains(repository);
 
     }
 
@@ -209,11 +305,29 @@ public class IssueListActivity extends AppCompatActivity {
             case R.id.action_pin_unpin:
                 if (isPinned()) {
 
+                    for (int i = 0; i < pinnedRepositories.size(); i++) {
+
+                        if (pinnedRepositories.get(i).getFull_name().equals(repositoryName)) {
+
+                            pinnedRepositories.remove(i);
+
+                        }
+
+                    }
+                    userDataReference.child("pinned_repos")
+                            .setValue(convertToString(pinnedRepositories));
+                    invalidateOptionsMenu();
                     Toast.makeText(this, "Repository Unpinned", Toast.LENGTH_LONG).show();
 
                 }
                 else {
 
+                    Repository repository = new Repository();
+                    repository.setFullName(repositoryName);
+                    pinnedRepositories.add(repository);
+                    userDataReference.child("pinned_repos")
+                            .setValue(convertToString(pinnedRepositories));
+                    invalidateOptionsMenu();
                     Toast.makeText(this, "Repository pinned", Toast.LENGTH_LONG).show();
 
                 }
@@ -223,6 +337,18 @@ public class IssueListActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
 
+    }
+
+    private List<String> convertToString(List<Repository> pinnedRepositories) {
+
+        List<String> repoStrings = new ArrayList<>();
+
+        for (Repository repo : pinnedRepositories) {
+
+            repoStrings.add(repo.getFull_name());
+
+        }
+        return repoStrings;
     }
 
     @Override

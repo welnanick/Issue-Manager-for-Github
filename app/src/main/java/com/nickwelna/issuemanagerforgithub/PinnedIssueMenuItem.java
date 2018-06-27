@@ -3,7 +3,7 @@ package com.nickwelna.issuemanagerforgithub;
 class PinnedIssueMenuItem {
 
     String text;
-    String subText;
+    int number;
     int viewType;
 
     public PinnedIssueMenuItem(String text, int viewType) {
@@ -13,10 +13,10 @@ class PinnedIssueMenuItem {
 
     }
 
-    public PinnedIssueMenuItem(String text, String subText, int viewType) {
+    public PinnedIssueMenuItem(String text, int number, int viewType) {
 
         this.text = text;
-        this.subText = subText;
+        this.number = number;
         this.viewType = viewType;
 
     }
@@ -26,4 +26,5 @@ class PinnedIssueMenuItem {
         this.viewType = viewType;
 
     }
+
 }

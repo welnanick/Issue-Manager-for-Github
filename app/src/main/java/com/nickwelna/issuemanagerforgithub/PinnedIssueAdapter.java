@@ -21,17 +21,23 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.PinnedIssueAdapter.PinnedIssueViewHolder;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
+import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
+
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
-    PinnedIssueMenuItem[] pinnedIssues;
+    List<PinnedIssueMenuItem> pinnedIssues;
     GithubUser user;
 
     public PinnedIssueAdapter(GithubUser user) {
@@ -66,16 +72,16 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
     @Override
     public int getItemViewType(int position) {
 
-        return pinnedIssues[position].viewType;
+        return pinnedIssues.get(position).viewType;
 
     }
 
     @Override
     public void onBindViewHolder(@NonNull PinnedIssueViewHolder holder, int position) {
 
-        if (pinnedIssues != null && pinnedIssues.length > 0) {
+        if (pinnedIssues != null && pinnedIssues.size() > 0) {
 
-            holder.bind(pinnedIssues[position], user);
+            holder.bind(pinnedIssues.get(position), user);
 
         }
 
@@ -86,14 +92,14 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
         if (pinnedIssues != null) {
 
-            return pinnedIssues.length;
+            return pinnedIssues.size();
 
         }
         return 0;
 
     }
 
-    public void updatePinnedRepositories(PinnedIssueMenuItem[] items) {
+    public void updatePinnedRepositories(List<PinnedIssueMenuItem> items) {
 
         pinnedIssues = items;
         notifyDataSetChanged();
@@ -202,36 +208,48 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                     break;
 
                 default:
-                    text.setText(item.text);
-                    subText.setText(item.subText);
 
-                    itemView.setOnClickListener(new OnClickListener() {
+                    SharedPreferences preferences =
+                            PreferenceManager.getDefaultSharedPreferences(context);
+                    String token = preferences.getString("OAuth_token", null);
+                    GitHubService service = ServiceGenerator.createService(token);
+                    String[] repoNameSplit = item.text.split("/");
+                    service.getIssue(repoNameSplit[0], repoNameSplit[1], item.number)
+                            .enqueue(new Callback<Issue>() {
 
-                        @Override
-                        public void onClick(View v) {
+                                @Override
+                                public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                            Intent viewIssueDetailsIntent =
-                                    new Intent(context, IssueDetailsActivity.class);
+                                    final Issue issue = response.body();
+                                    text.setText(issue.getTitle());
+                                    subText.setText("# " + issue.getNumber());
+                                    itemView.setOnClickListener(new OnClickListener() {
 
-                            Gson gson = new Gson();
-                            Issue issue = gson.fromJson("{\"url\":\"https://api.github" +
-                                            ".com/repos/JakeWharton/butterknife/issues/1294\"," +
-                                            "\"repository_url\":\"https://api.github" +
-                                            ".com/repos/JakeWharton/butterknife\"," +
-                                            "\"labels_url\":\"https://api.github" +
-                                            ".com/repos/JakeWharton/butterknife/issues/1294/labels{/name}\",\"comments_url\":\"https://api.github.com/repos/JakeWharton/butterknife/issues/1294/comments\",\"events_url\":\"https://api.github.com/repos/JakeWharton/butterknife/issues/1294/events\",\"html_url\":\"https://github.com/JakeWharton/butterknife/pull/1294\",\"id\":334163428,\"node_id\":\"MDExOlB1bGxSZXF1ZXN0MTk2MjA2MDUw\",\"number\":1294,\"title\":\"Enable task caching for R2Generator.\",\"user\":{\"login\":\"runningcode\",\"id\":332597,\"node_id\":\"MDQ6VXNlcjMzMjU5Nw==\",\"avatar_url\":\"https://avatars3.githubusercontent.com/u/332597?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/runningcode\",\"html_url\":\"https://github.com/runningcode\",\"followers_url\":\"https://api.github.com/users/runningcode/followers\",\"following_url\":\"https://api.github.com/users/runningcode/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/runningcode/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/runningcode/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/runningcode/subscriptions\",\"organizations_url\":\"https://api.github.com/users/runningcode/orgs\",\"repos_url\":\"https://api.github.com/users/runningcode/repos\",\"events_url\":\"https://api.github.com/users/runningcode/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/runningcode/received_events\",\"type\":\"User\",\"site_admin\":false},\"labels\":[],\"state\":\"open\",\"locked\":false,\"assignee\":null,\"assignees\":[],\"milestone\":null,\"comments\":3,\"created_at\":\"2018-06-20T16:43:51Z\",\"updated_at\":\"2018-06-21T03:27:07Z\",\"closed_at\":null,\"author_association\":\"CONTRIBUTOR\",\"pull_request\":{\"url\":\"https://api.github.com/repos/JakeWharton/butterknife/pulls/1294\",\"html_url\":\"https://github.com/JakeWharton/butterknife/pull/1294\",\"diff_url\":\"https://github.com/JakeWharton/butterknife/pull/1294.diff\",\"patch_url\":\"https://github.com/JakeWharton/butterknife/pull/1294.patch\"},\"body\":\"This enables gradle task caching for the R2 Generating task.\\r\\n\\r\\nSome more info on task caching:\\r\\nhttps://github.com/gradle/task-output-cache-demos/blob/master/docs/making-custom-tasks-cacheable.md\"}",
-                                    Issue.class);
-                            Bundle extras = new Bundle();
-                            extras.putParcelable("Issue", issue);
-                            extras.putBoolean("from-pinned", true);
-                            extras.putString("repo-name", "JakeWharton/butterknife");
-                            extras.putParcelable("user", user);
-                            viewIssueDetailsIntent.putExtras(extras);
-                            context.startActivity(viewIssueDetailsIntent);
+                                        @Override
+                                        public void onClick(View v) {
 
-                        }
+                                            Intent viewIssueDetailsIntent =
+                                                    new Intent(context, IssueDetailsActivity.class);
 
-                    });
+                                            Bundle extras = new Bundle();
+                                            extras.putParcelable("Issue", issue);
+                                            extras.putBoolean("from-pinned", true);
+                                            extras.putString("repo-name", item.text);
+                                            extras.putParcelable("user", user);
+                                            viewIssueDetailsIntent.putExtras(extras);
+                                            context.startActivity(viewIssueDetailsIntent);
+
+                                        }
+
+                                    });
+
+                                }
+
+                                @Override
+                                public void onFailure(Call<Issue> call, Throwable t) {
+
+                                }
+                            });
 
                     break;
             }

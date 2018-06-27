@@ -2,8 +2,8 @@ package com.nickwelna.issuemanagerforgithub;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -25,12 +25,20 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 
-import com.google.gson.Gson;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -53,13 +61,17 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
     RepositoryAdapter repositoryAdapter;
-    Repository[] pinnedRepositories;
+    List<Repository> pinnedRepositories;
     String currentList = "pinned";
     boolean refreshRequested = false;
     SharedPreferences preferences;
     GitHubService service;
     EditText searchText;
     GithubUser user;
+    FirebaseDatabase database = FirebaseDatabase.getInstance();
+    FirebaseAuth auth = FirebaseAuth.getInstance();
+    DatabaseReference userDataReference =
+            database.getReference("users").child(auth.getCurrentUser().getUid());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,8 +122,10 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
-        loadPinnedRepositories();
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        repositoryRecyclerView.setLayoutManager(linearLayoutManager);
+        repositoryAdapter = new RepositoryAdapter();
+        repositoryRecyclerView.setAdapter(repositoryAdapter);
 
     }
 
@@ -133,29 +147,31 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadPinnedRepositories() {
 
-        if (pinnedRepositories == null || refreshRequested) {
-            final Handler handler = new Handler();
+        DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
+        ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
 
-            final Runnable r = new Runnable() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                public void run() {
+                pinnedRepositories = new ArrayList<>();
+                for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
 
-                    Gson gson = new Gson();
-                    String test = getString(R.string.dummy_pinned_repos);
-                    pinnedRepositories = gson.fromJson(test, Repository[].class);
-                    repositoryAdapter.updateContents(pinnedRepositories);
-                    swipeRefresh.setRefreshing(false);
+                    Repository temp = new Repository();
+                    temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
+                    pinnedRepositories.add(temp);
+
                 }
+                swipeRefresh.setRefreshing(false);
+                repositoryAdapter.updateContents(pinnedRepositories);
 
-            };
+            }
 
-            handler.postDelayed(r, 5000);
-        }
-        else {
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
 
-            repositoryAdapter.updateContents(pinnedRepositories);
-
-        }
+            }
+        };
+        pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
         refreshRequested = false;
 
     }
@@ -171,19 +187,59 @@ public class MainActivity extends AppCompatActivity {
         menuRecyclerView.setLayoutManager(linearLayoutManager);
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
-        PinnedIssueMenuItem[] pinnedIssueMenuItems = new PinnedIssueMenuItem[5];
-        pinnedIssueMenuItems[0] = new PinnedIssueMenuItem(0);
-        pinnedIssueMenuItems[1] = new PinnedIssueMenuItem("JakeWharton/butterknife", 1);
-        pinnedIssueMenuItems[2] = new PinnedIssueMenuItem(
-                "Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~",
-                "#1293", 2);
-        pinnedIssueMenuItems[3] =
-                new PinnedIssueMenuItem("Multi module project with multiple R2 files", "#1292", 2);
-        pinnedIssueMenuItems[4] = new PinnedIssueMenuItem(
-                "Android Gradle plugin 3.1.0 must not be applied to project " +
-                        "'/Users/android_package/butterKnife/app' since version 3.1.0 was already" +
-                        " applied to this project", "#1290", 2);
-        pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+        final List<PinnedIssueMenuItem> pinnedIssueMenuItems = new ArrayList<>();
+        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
+
+        DatabaseReference pinnedIssues = userDataReference.child("pinned_issues");
+        ValueEventListener pinnedIssueListener = new ValueEventListener() {
+
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                //owners of all repos with pinned issues
+                for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                    String owner = pinnedIssueSnapshot.getKey();
+
+                    //repositories that have pinned issues
+                    for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
+                        String repositoryName = ownerRepositories.getKey();
+                        String fullName = owner + "/" + repositoryName;
+                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+
+                        //issues pinned
+                        for (DataSnapshot issue : ownerRepositories.getChildren()) {
+
+                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                    issue.getValue(Integer.class), 2));
+
+                        }
+
+                    }
+
+                }
+                pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };
+        pinnedIssues.addListenerForSingleValueEvent(pinnedIssueListener);
+
+    }
+
+    @Override
+    protected void onResume() {
+
+        super.onResume();
+        refresh();
+        if (user != null) {
+
+            loadPinnedIssues(user);
+
+        }
 
     }
 
@@ -243,11 +299,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        repositoryRecyclerView.setLayoutManager(linearLayoutManager);
-        repositoryAdapter = new RepositoryAdapter();
-        repositoryRecyclerView.setAdapter(repositoryAdapter);
 
         return super.onCreateOptionsMenu(menu);
 

@@ -86,4 +86,23 @@ public class Repository {
 
     }
 
+    public void setFullName(String fullName) {
+
+        this.full_name = fullName;
+
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+
+        if (obj instanceof Repository) {
+
+            Repository object = (Repository) obj;
+            return this.full_name.equals(object.getFull_name());
+
+        }
+        return false;
+
+    }
+
 }
