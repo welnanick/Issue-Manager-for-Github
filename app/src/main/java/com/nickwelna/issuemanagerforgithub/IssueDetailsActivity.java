@@ -836,6 +836,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                             }
                                             else {
 
+                                                swipeRefresh.setRefreshing(false);
                                                 Gson gson = new Gson();
                                                 APIRequestError error = null;
                                                 try {
@@ -949,6 +950,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                             }
                                             else {
 
+                                                swipeRefresh.setRefreshing(false);
                                                 Gson gson = new Gson();
                                                 APIRequestError error = null;
                                                 try {
