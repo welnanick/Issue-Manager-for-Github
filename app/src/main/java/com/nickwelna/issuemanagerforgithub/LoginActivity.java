@@ -10,10 +10,15 @@ import android.support.constraint.Group;
 import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -83,11 +88,51 @@ public class LoginActivity extends AppCompatActivity {
             }
 
         });
+        passwordEditText.setOnEditorActionListener(new OnEditorActionListener() {
+
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+
+                if (actionId == EditorInfo.IME_ACTION_GO) {
+
+                    authorizeUser();
+                    return true;
+
+                }
+                return false;
+
+            }
+
+        });
+        twoFactorEditText.setOnEditorActionListener(new OnEditorActionListener() {
+
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+
+                if (actionId == EditorInfo.IME_ACTION_GO) {
+
+                    authorizeUser();
+                    return true;
+
+                }
+                return false;
+
+            }
+
+        });
         mAuth = FirebaseAuth.getInstance();
 
     }
 
     private void authorizeUser() {
+
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+
+        if (imm != null && imm.isAcceptingText()) {
+
+            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+
+        }
 
         if (twoFactorInputLayout.getVisibility() == View.GONE) {
 
@@ -139,6 +184,7 @@ public class LoginActivity extends AppCompatActivity {
                                             "Two Factor Authentication required", Toast.LENGTH_LONG)
                                             .show();
                                     twoFactorInputLayout.setVisibility(View.VISIBLE);
+                                    passwordEditText.setImeOptions(EditorInfo.IME_ACTION_NEXT);
 
                                 }
 

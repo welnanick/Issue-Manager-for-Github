@@ -39,6 +39,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/username_hint"
+            android:imeOptions="actionNext"
+            android:inputType="text"
+            android:lines="1"
             android:maxLines="1"
             android:paddingEnd="12dp"
             android:paddingStart="12dp" />
@@ -62,7 +65,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/password_hint"
+            android:imeOptions="actionGo"
             android:inputType="textPassword"
+            android:lines="1"
             android:maxLines="1"
             android:paddingEnd="12dp"
             android:paddingStart="12dp" />
@@ -87,6 +92,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/two_factor_hint"
+            android:imeOptions="actionGo"
+            android:inputType="text"
+            android:lines="1"
             android:maxLines="1"
             android:paddingEnd="12dp"
             android:paddingStart="12dp" />
