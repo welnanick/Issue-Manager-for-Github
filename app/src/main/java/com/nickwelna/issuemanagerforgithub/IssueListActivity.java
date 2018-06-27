@@ -259,6 +259,11 @@ public class IssueListActivity extends AppCompatActivity {
         super.onResume();
         swipeRefresh.setRefreshing(true);
         loadIssues();
+        if (user != null) {
+
+            loadPinnedIssues(user);
+
+        }
 
     }
 

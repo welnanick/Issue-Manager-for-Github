@@ -73,6 +73,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     FirebaseAuth auth = FirebaseAuth.getInstance();
     DatabaseReference userDataReference =
             database.getReference("users").child(auth.getCurrentUser().getUid());
+    List<Integer> pinnedIssues;
     boolean pinned;
 
     @Override
@@ -194,9 +195,10 @@ public class IssueDetailsActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
         final List<PinnedIssueMenuItem> pinnedIssueMenuItems = new ArrayList<>();
+        pinnedIssues = new ArrayList<>();
         pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
 
-        DatabaseReference pinnedIssues = userDataReference.child("pinned_issues");
+        DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
         ValueEventListener pinnedIssueListener = new ValueEventListener() {
 
             @Override
@@ -217,6 +219,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
                             pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
                                     issue.getValue(Integer.class), 2));
+                            pinnedIssues.add(issue.getValue(Integer.class));
 
                         }
 
@@ -224,6 +227,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
                 }
                 pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+                isPinned();
 
             }
 
@@ -232,7 +236,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
             }
         };
-        pinnedIssues.addListenerForSingleValueEvent(pinnedIssueListener);
+        pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
 
     }
 
@@ -309,7 +313,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         if (pinned) {
 
             pinUnpin.setTitle("Unpin issue");
-            pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
+            pinUnpin.setIcon(R.drawable.ic_thumbtack_off_white_24dp);
 
         }
 
@@ -319,33 +323,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private void isPinned() {
 
-        DatabaseReference reference =
-                userDataReference.child("pinned_issues").child(repositoryName);
-
-        ValueEventListener issueCheckListener = new ValueEventListener() {
-
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                for (DataSnapshot issues : dataSnapshot.getChildren()) {
-
-                    if (issues.getValue(Integer.class).equals(issue.getNumber())) {
-
-                        pinned = true;
-                        invalidateOptionsMenu();
-
-                    }
-
-                }
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        };
-        reference.addListenerForSingleValueEvent(issueCheckListener);
+        pinned = pinnedIssues.contains(issue.getNumber());
+        invalidateOptionsMenu();
 
     }
 
@@ -549,24 +528,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
             case R.id.action_pin_unpin:
                 if (pinned) {
 
-                    DatabaseReference reference =
+                    final DatabaseReference reference =
                             userDataReference.child("pinned_issues").child(repositoryName);
                     ValueEventListener issueCheckListener = new ValueEventListener() {
 
                         @Override
                         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
+                            List<Integer> thisRepoPinnedIssues = new ArrayList<>();
+
                             for (DataSnapshot issues : dataSnapshot.getChildren()) {
 
-                                if (issues.getValue(Integer.class).equals(issue.getNumber())) {
-
-                                    pinned = false;
-                                    issues.getRef().removeValue();
-                                    invalidateOptionsMenu();
-
-                                }
+                                thisRepoPinnedIssues.add(issues.getValue(Integer.class));
 
                             }
+                            pinned = true;
+                            thisRepoPinnedIssues.remove((Integer) issue.getNumber());
+                            reference.setValue(thisRepoPinnedIssues);
+                            invalidateOptionsMenu();
+                            loadPinnedIssues(user);
 
                         }
 
@@ -589,16 +569,18 @@ public class IssueDetailsActivity extends AppCompatActivity {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                            int size = 0;
+                            List<Integer> thisRepoPinnedIssues = new ArrayList<>();
 
                             for (DataSnapshot issues : dataSnapshot.getChildren()) {
 
-                                size++;
+                                thisRepoPinnedIssues.add(issues.getValue(Integer.class));
 
                             }
                             pinned = true;
-                            reference.child(String.valueOf(size)).setValue(issue.getNumber());
+                            thisRepoPinnedIssues.add(issue.getNumber());
+                            reference.setValue(thisRepoPinnedIssues);
                             invalidateOptionsMenu();
+                            loadPinnedIssues(user);
 
                         }
 
