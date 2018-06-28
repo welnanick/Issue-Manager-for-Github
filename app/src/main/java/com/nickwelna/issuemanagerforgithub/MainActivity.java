@@ -1,10 +1,13 @@
 package com.nickwelna.issuemanagerforgithub;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -86,7 +89,6 @@ public class MainActivity extends AppCompatActivity {
     boolean loadSearch = false;
     String searchTextString;
     boolean rotated;
-    boolean connected;
     public static final String CURRENT_LIST_PINNED = "pinned";
     public static final String CURRENT_LIST_SEARCH = "search";
     public static final String USER_KEY = "user";
@@ -148,81 +150,7 @@ public class MainActivity extends AppCompatActivity {
 
         service = ServiceGenerator.createService(token);
         if (user == null) {
-            service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
-
-                @Override
-                public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
-
-                    if (response.code() == 401) {
-
-                        Gson gson = new Gson();
-                        APIRequestError error = null;
-                        try {
-                            error = gson.fromJson(response.errorBody().string(),
-                                    APIRequestError.class);
-                        }
-                        catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
-
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle(R.string.login_credentials_expired_title)
-                                    .setPositiveButton(R.string.ok_button_text,
-                                            new OnClickListener() {
-
-                                                @Override
-                                                public void onClick(DialogInterface dialog,
-                                                                    int which) {
-
-                                                    SharedPreferences preferences =
-                                                            PreferenceManager
-                                                                    .getDefaultSharedPreferences(
-                                                                            MainActivity.this);
-                                                    Editor editor = preferences.edit();
-                                                    editor.putString(
-                                                            getString(R.string.oauth_token_key),
-                                                            null);
-                                                    editor.apply();
-                                                    FirebaseAuth.getInstance().signOut();
-
-                                                    Intent logoutIntent =
-                                                            new Intent(MainActivity.this,
-                                                                    LoginActivity.class);
-                                                    logoutIntent.addFlags(
-                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                    dialog.dismiss();
-                                                    MainActivity.this.startActivity(logoutIntent);
-
-                                                }
-
-                                            }).create().show();
-
-                        }
-
-                    }
-                    else {
-
-                        user = response.body();
-                        repositoryAdapter.updateUser(user);
-                        loadPinnedIssues(user);
-                        loadPinnedRepositories();
-
-                    }
-
-                }
-
-                @Override
-                public void onFailure(Call<GithubUser> call, Throwable t) {
-
-                    swipeRefresh.setRefreshing(false);
-                    Toast.makeText(MainActivity.this, R.string.network_error_toast,
-                            Toast.LENGTH_LONG).show();
-
-                }
-            });
+            loadUser();
         }
         else {
 
@@ -234,65 +162,174 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void loadUser() {
+
+        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+            @Override
+            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                if (response.code() == 401) {
+
+                    Gson gson = new Gson();
+                    APIRequestError error = null;
+                    try {
+                        error = gson.fromJson(response.errorBody().string(), APIRequestError.class);
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
+
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle(R.string.login_credentials_expired_title)
+                                .setPositiveButton(R.string.ok_button_text, new OnClickListener() {
+
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                        SharedPreferences preferences = PreferenceManager
+                                                .getDefaultSharedPreferences(MainActivity.this);
+                                        Editor editor = preferences.edit();
+                                        editor.putString(getString(R.string.oauth_token_key), null);
+                                        editor.apply();
+                                        FirebaseAuth.getInstance().signOut();
+
+                                        Intent logoutIntent =
+                                                new Intent(MainActivity.this, LoginActivity.class);
+                                        logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                        dialog.dismiss();
+                                        MainActivity.this.startActivity(logoutIntent);
+
+                                    }
+
+                                }).create().show();
+
+                    }
+
+                }
+                else {
+
+                    user = response.body();
+                    repositoryAdapter.updateUser(user);
+                    if (firstRun || refreshRequested) {
+                        loadPinnedIssues(user);
+                        if (currentList.equals(CURRENT_LIST_PINNED)) {
+                            loadPinnedRepositories();
+                        }
+                        else {
+                            searchRepositories();
+                        }
+                    }
+
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<GithubUser> call, Throwable t) {
+
+                swipeRefresh.setRefreshing(false);
+                Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                        .show();
+
+            }
+        });
+    }
+
     private void refresh() {
 
-        if (currentList.equals(CURRENT_LIST_PINNED)) {
-
-            refreshRequested = true;
-            loadPinnedRepositories();
-
-        }
-        else {
-
-            searchRepositories();
-
-        }
+        refreshRequested = true;
+        loadUser();
 
     }
 
     private void loadPinnedRepositories() {
 
-        firebaseConnected();
-
-        if (connected && (visibleRepositories == null || refreshRequested || !rotated)) {
-
-            DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
-            ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
+            DatabaseReference connectedRef =
+                    FirebaseDatabase.getInstance().getReference(".info/connected");
+            connectedRef.addValueEventListener(new ValueEventListener() {
 
                 @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                public void onDataChange(DataSnapshot snapshot) {
 
-                    visibleRepositories = new ArrayList<>();
-                    for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+                    if (snapshot.getValue(Boolean.class)) {
 
-                        Repository temp = new Repository();
-                        temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
-                        visibleRepositories.add(temp);
+                        if (visibleRepositories == null || refreshRequested || !rotated) {
+
+                            DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
+                            ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
+
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                                    visibleRepositories = new ArrayList<>();
+                                    for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+
+                                        Repository temp = new Repository();
+                                        temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
+                                        visibleRepositories.add(temp);
+
+                                    }
+                                    swipeRefresh.setRefreshing(false);
+                                    repositoryAdapter.updateContents(visibleRepositories);
+
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                    swipeRefresh.setRefreshing(false);
+                                    Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                                            .show();
+
+                                }
+                            };
+                            pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
+                            refreshRequested = false;
+
+                        }
+                        else {
+
+                            swipeRefresh.setRefreshing(false);
+                            repositoryAdapter.updateContents(visibleRepositories);
+
+                        }
 
                     }
-                    swipeRefresh.setRefreshing(false);
-                    repositoryAdapter.updateContents(visibleRepositories);
+                    else {
+
+                        swipeRefresh.setRefreshing(false);
+                        Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                                .show();
+
+                    }
 
                 }
 
                 @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
+                public void onCancelled(DatabaseError error) {
+
+                    swipeRefresh.setRefreshing(false);
+                    Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                            .show();
 
                 }
-            };
-            pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
-            refreshRequested = false;
 
-        }
-        else if (!connected) {
-
-            swipeRefresh.setRefreshing(false);
+            });
 
         }
         else {
 
             swipeRefresh.setRefreshing(false);
-            repositoryAdapter.updateContents(visibleRepositories);
+            Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                    .show();
 
         }
 
@@ -300,67 +337,80 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadPinnedIssues(GithubUser user) {
 
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        menuRecyclerView.setLayoutManager(linearLayoutManager);
-        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
-        menuRecyclerView.setAdapter(pinnedIssueAdapter);
+        if (user != null) {
+            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+            menuRecyclerView.setLayoutManager(linearLayoutManager);
+            final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
+            menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        firebaseConnected();
+            ConnectivityManager connectivityManager =
+                    (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
 
-        if (connected && (pinnedIssueMenuItems == null || !rotated)) {
+                if (pinnedIssueMenuItems == null || !rotated) {
 
-            pinnedIssueMenuItems = new ArrayList<>();
-            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
+                    pinnedIssueMenuItems = new ArrayList<>();
+                    pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
 
-            DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
-            ValueEventListener pinnedIssueListener = new ValueEventListener() {
+                    DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
+                    ValueEventListener pinnedIssueListener = new ValueEventListener() {
 
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                    //owners of all repos with pinned issues
-                    for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
-                        String owner = pinnedIssueSnapshot.getKey();
+                            //owners of all repos with pinned issues
+                            for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                                String owner = pinnedIssueSnapshot.getKey();
 
-                        //repositories that have pinned issues
-                        for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
-                            String repositoryName = ownerRepositories.getKey();
-                            String fullName = owner + "/" + repositoryName;
-                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+                                //repositories that have pinned issues
+                                for (DataSnapshot ownerRepositories : pinnedIssueSnapshot
+                                        .getChildren()) {
+                                    String repositoryName = ownerRepositories.getKey();
+                                    String fullName = owner + "/" + repositoryName;
+                                    pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
 
-                            //issues pinned
-                            for (DataSnapshot issue : ownerRepositories.getChildren()) {
+                                    //issues pinned
+                                    for (DataSnapshot issue : ownerRepositories.getChildren()) {
 
-                                pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
-                                        issue.getValue(Integer.class), 2));
+                                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                                issue.getValue(Integer.class), 2));
+
+                                    }
+
+                                }
 
                             }
+                            pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
 
                         }
 
-                    }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                            swipeRefresh.setRefreshing(false);
+                            Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                                    .show();
+
+                        }
+                    };
+                    pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+
+                }
+                else {
+
                     pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
 
                 }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
+            }
+            else {
 
-                }
-            };
-            pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+                swipeRefresh.setRefreshing(false);
+                Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                        .show();
 
-        }
-        else if (!connected) {
-
-            swipeRefresh.setRefreshing(false);
-            Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
-                    .show();
-
-        }
-        else {
-
-            pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+            }
 
         }
 
@@ -370,36 +420,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
 
         super.onResume();
-        if (user != null && !firstRun) {
+        if (!rotated && !firstRun) {
 
-            loadPinnedIssues(user);
-            DatabaseReference connectedRef =
-                    FirebaseDatabase.getInstance().getReference(".info/connected");
-            connectedRef.addValueEventListener(new ValueEventListener() {
-
-                @Override
-                public void onDataChange(DataSnapshot snapshot) {
-
-                    connected = snapshot.getValue(Boolean.class);
-
-                }
-
-                @Override
-                public void onCancelled(DatabaseError error) {
-
-                }
-
-            });
+            refresh();
 
         }
         if (firstRun) {
 
             firstRun = false;
-
-        }
-        if (!rotated) {
-
-            refresh();
 
         }
         if (rotated) {
@@ -640,28 +668,6 @@ public class MainActivity extends AppCompatActivity {
         else {
             outState.putBoolean(LOAD_SEARCH_KEY, false);
         }
-
-    }
-
-    private void firebaseConnected() {
-
-        DatabaseReference connectedRef =
-                FirebaseDatabase.getInstance().getReference(".info/connected");
-        connectedRef.addValueEventListener(new ValueEventListener() {
-
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-
-                connected = snapshot.getValue(Boolean.class);
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-
-            }
-
-        });
 
     }
 

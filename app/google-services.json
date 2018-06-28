@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1088710286587",
+    "firebase_url": "https://issue-manager-for-github.firebaseio.com",
+    "project_id": "issue-manager-for-github",
+    "storage_bucket": "issue-manager-for-github.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1088710286587:android:a895550745d1614b",
+        "android_client_info": {
+          "package_name": "com.nickwelna.issuemanagerforgithub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1088710286587-bdgmigi958k3hvtjqe1avmc91mh02c7m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nickwelna.issuemanagerforgithub",
+            "certificate_hash": "872c829cfa8483ee5e772899f3bc050d504ae6f9"
+          }
+        },
+        {
+          "client_id": "1088710286587-ih5d29gqvr2qt49h1lm3osvgfo9m2suf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDJ7Z2EpdvSGBU-ec2r62cSQRBPVq_bGY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1088710286587-ih5d29gqvr2qt49h1lm3osvgfo9m2suf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

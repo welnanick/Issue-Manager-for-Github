@@ -1,9 +1,12 @@
 package com.nickwelna.issuemanagerforgithub;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -149,6 +152,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
             public void onRefresh() {
 
                 refreshIssue();
+                loadUser();
 
             }
 
@@ -184,84 +188,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         service = ServiceGenerator.createService(token);
         if (user == null) {
-            service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
-
-                @Override
-                public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
-
-                    if (response.code() == 401) {
-
-                        Gson gson = new Gson();
-                        APIRequestError error = null;
-                        try {
-                            error = gson.fromJson(response.errorBody().string(),
-                                    APIRequestError.class);
-                        }
-                        catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
-
-                            new AlertDialog.Builder(IssueDetailsActivity.this)
-                                    .setTitle(R.string.login_credentials_expired_title)
-                                    .setMessage(R.string.expired_credentials_message)
-                                    .setPositiveButton(R.string.ok_button_text,
-                                            new DialogInterface.OnClickListener() {
-
-                                                @Override
-                                                public void onClick(DialogInterface dialog,
-                                                                    int which) {
-
-                                                    SharedPreferences preferences =
-                                                            PreferenceManager
-                                                                    .getDefaultSharedPreferences(
-                                                                            IssueDetailsActivity
-                                                                                    .this);
-                                                    Editor editor = preferences.edit();
-                                                    editor.putString(
-                                                            getString(R.string.oauth_token_key),
-                                                            null);
-                                                    editor.apply();
-                                                    FirebaseAuth.getInstance().signOut();
-
-                                                    Intent logoutIntent =
-                                                            new Intent(IssueDetailsActivity.this,
-                                                                    LoginActivity.class);
-                                                    logoutIntent.addFlags(
-                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                    dialog.dismiss();
-                                                    IssueDetailsActivity.this
-                                                            .startActivity(logoutIntent);
-
-                                                }
-
-                                            }).create().show();
-
-                        }
-
-                    }
-                    else {
-
-                        user = response.body();
-                        commentAdapter.user = user;
-                        loadPinnedIssues(user);
-                        loadComments();
-
-                    }
-
-                }
-
-                @Override
-                public void onFailure(Call<GithubUser> call, Throwable t) {
-
-                    swipeRefresh.setRefreshing(false);
-                    Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
-                            Toast.LENGTH_LONG).show();
-
-                }
-            });
+            loadUser();
         }
         else {
             loadPinnedIssues(user);
@@ -358,68 +285,161 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private void loadPinnedIssues(GithubUser user) {
 
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        menuRecyclerView.setLayoutManager(linearLayoutManager);
-        final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
-        menuRecyclerView.setAdapter(pinnedIssueAdapter);
+        if (user != null) {
 
-        if (connected && (pinnedIssueMenuItems == null || !rotated)) {
+            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+            menuRecyclerView.setLayoutManager(linearLayoutManager);
+            final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
+            menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-            pinnedIssueMenuItems = new ArrayList<>();
-            pinnedIssues = new ArrayList<>();
-            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
+            ConnectivityManager connectivityManager =
+                    (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
 
-            DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
-            ValueEventListener pinnedIssueListener = new ValueEventListener() {
+                if (pinnedIssueMenuItems == null || !rotated) {
 
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    pinnedIssueMenuItems = new ArrayList<>();
+                    pinnedIssues = new ArrayList<>();
+                    pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
 
-                    //owners of all repos with pinned issues
-                    for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
-                        String owner = pinnedIssueSnapshot.getKey();
+                    DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
+                    ValueEventListener pinnedIssueListener = new ValueEventListener() {
 
-                        //repositories that have pinned issues
-                        for (DataSnapshot ownerRepositories : pinnedIssueSnapshot.getChildren()) {
-                            String repositoryName = ownerRepositories.getKey();
-                            String fullName = owner + "/" + repositoryName;
-                            pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                            //issues pinned
-                            for (DataSnapshot issue : ownerRepositories.getChildren()) {
+                            //owners of all repos with pinned issues
+                            for (DataSnapshot pinnedIssueSnapshot : dataSnapshot.getChildren()) {
+                                String owner = pinnedIssueSnapshot.getKey();
 
-                                pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
-                                        issue.getValue(Integer.class), 2));
-                                pinnedIssues.add(issue.getValue(Integer.class));
+                                //repositories that have pinned issues
+                                for (DataSnapshot ownerRepositories : pinnedIssueSnapshot
+                                        .getChildren()) {
+                                    String repositoryName = ownerRepositories.getKey();
+                                    String fullName = owner + "/" + repositoryName;
+                                    pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName, 1));
+
+                                    //issues pinned
+                                    for (DataSnapshot issue : ownerRepositories.getChildren()) {
+
+                                        pinnedIssueMenuItems.add(new PinnedIssueMenuItem(fullName,
+                                                issue.getValue(Integer.class), 2));
+                                        pinnedIssues.add(issue.getValue(Integer.class));
+
+                                    }
+
+                                }
 
                             }
+                            pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
+                            isPinned();
 
                         }
 
-                    }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    };
+                    pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+
+                }
+                else {
+
                     pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
                     isPinned();
 
                 }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
+            }
+            else {
+
+                swipeRefresh.setRefreshing(false);
+                Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
+                        Toast.LENGTH_LONG).show();
+
+            }
+
+        }
+
+    }
+
+    private void loadUser() {
+
+        service.getAuthorizedUser().enqueue(new Callback<GithubUser>() {
+
+            @Override
+            public void onResponse(Call<GithubUser> call, Response<GithubUser> response) {
+
+                if (response.code() == 401) {
+
+                    Gson gson = new Gson();
+                    APIRequestError error = null;
+                    try {
+                        error = gson.fromJson(response.errorBody().string(), APIRequestError.class);
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
+
+                        new AlertDialog.Builder(IssueDetailsActivity.this)
+                                .setTitle(R.string.login_credentials_expired_title)
+                                .setPositiveButton(R.string.ok_button_text,
+                                        new DialogInterface.OnClickListener() {
+
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                                SharedPreferences preferences = PreferenceManager
+                                                        .getDefaultSharedPreferences(
+                                                                IssueDetailsActivity.this);
+                                                Editor editor = preferences.edit();
+                                                editor.putString(
+                                                        getString(R.string.oauth_token_key), null);
+                                                editor.apply();
+                                                FirebaseAuth.getInstance().signOut();
+
+                                                Intent logoutIntent =
+                                                        new Intent(IssueDetailsActivity.this,
+                                                                LoginActivity.class);
+                                                logoutIntent.addFlags(
+                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                dialog.dismiss();
+                                                IssueDetailsActivity.this
+                                                        .startActivity(logoutIntent);
+
+                                            }
+
+                                        }).create().show();
+
+                    }
 
                 }
-            };
-            pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+                else {
 
-        }
-        else if (!connected) {
+                    user = response.body();
+                    loadPinnedIssues(user);
+                    if (firstRun) {
+                        loadComments();
+                    }
 
-        }
-        else {
+                }
 
-            pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
-            isPinned();
+            }
 
-        }
+            @Override
+            public void onFailure(Call<GithubUser> call, Throwable t) {
 
+                swipeRefresh.setRefreshing(false);
+                Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
+                        Toast.LENGTH_LONG).show();
+
+            }
+        });
     }
 
     private void loadComments() {
@@ -589,571 +609,614 @@ public class IssueDetailsActivity extends AppCompatActivity {
         switch (item.getItemId()) {
 
             case R.id.action_close_open:
-                swipeRefresh.setRefreshing(true);
-                IssueCloseOpenRequest closeOpenRequest = new IssueCloseOpenRequest();
-                if (issue.getState().equals(getString(R.string.issue_state_closed))) {
+                ConnectivityManager connectivityManager =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+                if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
+                    swipeRefresh.setRefreshing(true);
+                    IssueCloseOpenRequest closeOpenRequest = new IssueCloseOpenRequest();
+                    if (issue.getState().equals(getString(R.string.issue_state_closed))) {
 
-                    closeOpenRequest.setState(getString(R.string.issue_state_open));
-                    service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
-                            closeOpenRequest).enqueue(
+                        closeOpenRequest.setState(getString(R.string.issue_state_open));
+                        service.openCloseIssue(repoNameSplit[0], repoNameSplit[1],
+                                issue.getNumber(), closeOpenRequest).enqueue(
 
-                            new Callback<Issue>() {
+                                new Callback<Issue>() {
 
-                                @Override
-                                public void onResponse(Call<Issue> call, Response<Issue> response) {
+                                    @Override
+                                    public void onResponse(Call<Issue> call,
+                                                           Response<Issue> response) {
 
-                                    switch (response.code()) {
-                                        case 200:
+                                        switch (response.code()) {
+                                            case 200:
 
-                                            issue = response.body();
-                                            invalidateOptionsMenu();
-                                            loadComments();
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    R.string.issue_opened_toast, Toast.LENGTH_LONG)
-                                                    .show();
+                                                issue = response.body();
+                                                invalidateOptionsMenu();
+                                                loadComments();
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        R.string.issue_opened_toast,
+                                                        Toast.LENGTH_LONG).show();
 
-                                            break;
-                                        case 401: {
+                                                break;
+                                            case 401: {
 
-                                            Gson gson = new Gson();
-                                            APIRequestError error = null;
-                                            try {
-                                                error = gson.fromJson(response.errorBody().string(),
-                                                        APIRequestError.class);
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+
+                                                if (error.getMessage().equals(getString(
+                                                        R.string.bad_credentials_error))) {
+
+                                                    new AlertDialog.Builder(IssueDetailsActivity
+                                                            .this).setTitle(
+                                                            R.string.login_credentials_expired_title)
+                                                            .setMessage(
+                                                                    R.string.expired_credentials_message)
+                                                            .setPositiveButton(
+                                                                    R.string.ok_button_text,
+                                                                    new DialogInterface
+                                                                            .OnClickListener() {
+
+                                                                        @Override
+                                                                        public void onClick(
+                                                                                DialogInterface
+                                                                                        dialog,
+                                                                                int which) {
+
+                                                                            SharedPreferences
+                                                                                    preferences =
+                                                                                    PreferenceManager
+                                                                                            .getDefaultSharedPreferences(
+                                                                                                    IssueDetailsActivity.this);
+                                                                            Editor editor =
+                                                                                    preferences
+                                                                                            .edit();
+                                                                            editor.putString(
+                                                                                    getString(
+                                                                                            R.string.oauth_token_key),
+                                                                                    null);
+                                                                            editor.apply();
+                                                                            FirebaseAuth
+                                                                                    .getInstance()
+                                                                                    .signOut();
+
+                                                                            Intent logoutIntent =
+                                                                                    new Intent(
+                                                                                            IssueDetailsActivity.this,
+                                                                                            LoginActivity.class);
+                                                                            logoutIntent.addFlags(
+                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                            dialog.dismiss();
+                                                                            IssueDetailsActivity
+                                                                                    .this
+                                                                                    .startActivity(
+                                                                                            logoutIntent);
+
+                                                                        }
+
+                                                                    }).create().show();
+
+                                                }
+
+                                                break;
                                             }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
+                                            default: {
+
+                                                swipeRefresh.setRefreshing(false);
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        error.getMessage(), Toast.LENGTH_LONG)
+                                                        .show();
+
+                                                break;
                                             }
-
-                                            if (error.getMessage().equals(getString(
-                                                    R.string.bad_credentials_error))) {
-
-                                                new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                        .setTitle(
-                                                                R.string.login_credentials_expired_title)
-                                                        .setMessage(
-                                                                R.string.expired_credentials_message)
-                                                        .setPositiveButton(R.string.ok_button_text,
-                                                                new DialogInterface
-                                                                        .OnClickListener() {
-
-                                                                    @Override
-                                                                    public void onClick(
-                                                                            DialogInterface dialog,
-                                                                            int which) {
-
-                                                                        SharedPreferences
-                                                                                preferences =
-                                                                                PreferenceManager
-                                                                                        .getDefaultSharedPreferences(
-                                                                                                IssueDetailsActivity.this);
-                                                                        Editor editor =
-                                                                                preferences.edit();
-                                                                        editor.putString(getString(
-                                                                                R.string.oauth_token_key),
-                                                                                null);
-                                                                        editor.apply();
-                                                                        FirebaseAuth.getInstance()
-                                                                                .signOut();
-
-                                                                        Intent logoutIntent =
-                                                                                new Intent(
-                                                                                        IssueDetailsActivity.this,
-                                                                                        LoginActivity.class);
-                                                                        logoutIntent.addFlags(
-                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                        dialog.dismiss();
-                                                                        IssueDetailsActivity.this
-                                                                                .startActivity(
-                                                                                        logoutIntent);
-
-                                                                    }
-
-                                                                }).create().show();
-
-                                            }
-
-                                            break;
                                         }
-                                        default: {
 
-                                            swipeRefresh.setRefreshing(false);
-                                            Gson gson = new Gson();
-                                            APIRequestError error = null;
-                                            try {
-                                                error = gson.fromJson(response.errorBody().string(),
-                                                        APIRequestError.class);
-                                            }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
-                                            }
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    error.getMessage(), Toast.LENGTH_LONG).show();
-
-                                            break;
-                                        }
                                     }
 
-                                }
+                                    @Override
+                                    public void onFailure(Call<Issue> call, Throwable t) {
 
-                                @Override
-                                public void onFailure(Call<Issue> call, Throwable t) {
+                                        swipeRefresh.setRefreshing(false);
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                R.string.network_error_toast, Toast.LENGTH_LONG)
+                                                .show();
 
-                                    swipeRefresh.setRefreshing(false);
-                                    Toast.makeText(IssueDetailsActivity.this,
-                                            R.string.network_error_toast, Toast.LENGTH_LONG).show();
+                                    }
+                                });
 
-                                }
-                            });
+                    }
+                    else {
 
-                }
-                else {
+                        closeOpenRequest.setState(getString(R.string.issue_state_closed));
+                        service.openCloseIssue(repoNameSplit[0], repoNameSplit[1],
+                                issue.getNumber(), closeOpenRequest).enqueue(
 
-                    closeOpenRequest.setState(getString(R.string.issue_state_closed));
-                    service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
-                            closeOpenRequest).enqueue(
+                                new Callback<Issue>() {
 
-                            new Callback<Issue>() {
+                                    @Override
+                                    public void onResponse(Call<Issue> call,
+                                                           Response<Issue> response) {
 
-                                @Override
-                                public void onResponse(Call<Issue> call, Response<Issue> response) {
+                                        switch (response.code()) {
+                                            case 200:
 
-                                    switch (response.code()) {
-                                        case 200:
+                                                issue = response.body();
+                                                invalidateOptionsMenu();
+                                                loadComments();
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        R.string.issue_closed_toast,
+                                                        Toast.LENGTH_LONG).show();
 
-                                            issue = response.body();
-                                            invalidateOptionsMenu();
-                                            loadComments();
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    R.string.issue_closed_toast, Toast.LENGTH_LONG)
-                                                    .show();
+                                                break;
+                                            case 401: {
 
-                                            break;
-                                        case 401: {
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
 
-                                            Gson gson = new Gson();
-                                            APIRequestError error = null;
-                                            try {
-                                                error = gson.fromJson(response.errorBody().string(),
-                                                        APIRequestError.class);
+                                                if (error.getMessage().equals(getString(
+                                                        R.string.bad_credentials_error))) {
+
+                                                    new AlertDialog.Builder(IssueDetailsActivity
+                                                            .this).setTitle(
+                                                            R.string.login_credentials_expired_title)
+                                                            .setMessage(
+                                                                    R.string.expired_credentials_message)
+                                                            .setPositiveButton(
+                                                                    R.string.ok_button_text,
+                                                                    new DialogInterface
+                                                                            .OnClickListener() {
+
+                                                                        @Override
+                                                                        public void onClick(
+                                                                                DialogInterface
+                                                                                        dialog,
+                                                                                int which) {
+
+                                                                            SharedPreferences
+                                                                                    preferences =
+                                                                                    PreferenceManager
+                                                                                            .getDefaultSharedPreferences(
+                                                                                                    IssueDetailsActivity.this);
+                                                                            Editor editor =
+                                                                                    preferences
+                                                                                            .edit();
+                                                                            editor.putString(
+                                                                                    getString(
+                                                                                            R.string.oauth_token_key),
+                                                                                    null);
+                                                                            editor.apply();
+                                                                            FirebaseAuth
+                                                                                    .getInstance()
+                                                                                    .signOut();
+
+                                                                            Intent logoutIntent =
+                                                                                    new Intent(
+                                                                                            IssueDetailsActivity.this,
+                                                                                            LoginActivity.class);
+                                                                            logoutIntent.addFlags(
+                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                            dialog.dismiss();
+                                                                            IssueDetailsActivity
+                                                                                    .this
+                                                                                    .startActivity(
+                                                                                            logoutIntent);
+
+                                                                        }
+
+                                                                    }).create().show();
+
+                                                }
+
+                                                break;
                                             }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
+                                            default: {
+
+                                                swipeRefresh.setRefreshing(false);
+                                                Gson gson = new Gson();
+                                                APIRequestError error = null;
+                                                try {
+                                                    error = gson.fromJson(
+                                                            response.errorBody().string(),
+                                                            APIRequestError.class);
+                                                }
+                                                catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        error.getMessage(), Toast.LENGTH_LONG)
+                                                        .show();
+
+                                                break;
                                             }
-
-                                            if (error.getMessage().equals(getString(
-                                                    R.string.bad_credentials_error))) {
-
-                                                new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                        .setTitle(
-                                                                R.string.login_credentials_expired_title)
-                                                        .setMessage(
-                                                                R.string.expired_credentials_message)
-                                                        .setPositiveButton(R.string.ok_button_text,
-                                                                new DialogInterface
-                                                                        .OnClickListener() {
-
-                                                                    @Override
-                                                                    public void onClick(
-                                                                            DialogInterface dialog,
-                                                                            int which) {
-
-                                                                        SharedPreferences
-                                                                                preferences =
-                                                                                PreferenceManager
-                                                                                        .getDefaultSharedPreferences(
-                                                                                                IssueDetailsActivity.this);
-                                                                        Editor editor =
-                                                                                preferences.edit();
-                                                                        editor.putString(getString(
-                                                                                R.string.oauth_token_key),
-                                                                                null);
-                                                                        editor.apply();
-                                                                        FirebaseAuth.getInstance()
-                                                                                .signOut();
-
-                                                                        Intent logoutIntent =
-                                                                                new Intent(
-                                                                                        IssueDetailsActivity.this,
-                                                                                        LoginActivity.class);
-                                                                        logoutIntent.addFlags(
-                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                        dialog.dismiss();
-                                                                        IssueDetailsActivity.this
-                                                                                .startActivity(
-                                                                                        logoutIntent);
-
-                                                                    }
-
-                                                                }).create().show();
-
-                                            }
-
-                                            break;
                                         }
-                                        default: {
 
-                                            swipeRefresh.setRefreshing(false);
-                                            Gson gson = new Gson();
-                                            APIRequestError error = null;
-                                            try {
-                                                error = gson.fromJson(response.errorBody().string(),
-                                                        APIRequestError.class);
-                                            }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
-                                            }
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    error.getMessage(), Toast.LENGTH_LONG).show();
-
-                                            break;
-                                        }
                                     }
 
-                                }
+                                    @Override
+                                    public void onFailure(Call<Issue> call, Throwable t) {
 
-                                @Override
-                                public void onFailure(Call<Issue> call, Throwable t) {
+                                        swipeRefresh.setRefreshing(false);
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                R.string.network_error_toast, Toast.LENGTH_LONG)
+                                                .show();
 
-                                    swipeRefresh.setRefreshing(false);
-                                    Toast.makeText(IssueDetailsActivity.this,
-                                            R.string.network_error_toast, Toast.LENGTH_LONG).show();
+                                    }
+                                });
 
-                                }
-                            });
-
+                    }
+                    return true;
                 }
-                return true;
+                return false;
 
             case R.id.action_lock_unlock:
-                swipeRefresh.setRefreshing(true);
-                if (issue.isLocked()) {
+                connectivityManager =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+                if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
+                    swipeRefresh.setRefreshing(true);
+                    if (issue.isLocked()) {
 
-                    service.unlockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
-                            .enqueue(
+                        service.unlockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                                .enqueue(
 
-                                    new Callback<Issue>() {
+                                        new Callback<Issue>() {
 
-                                        @Override
-                                        public void onResponse(Call<Issue> call,
-                                                               Response<Issue> response) {
+                                            @Override
+                                            public void onResponse(Call<Issue> call,
+                                                                   Response<Issue> response) {
 
-                                            switch (response.code()) {
-                                                case 204:
+                                                switch (response.code()) {
+                                                    case 204:
 
-                                                    refreshIssue();
+                                                        refreshIssue();
 
-                                                    Toast.makeText(IssueDetailsActivity.this,
-                                                            R.string.issue_unlocked_toast,
-                                                            Toast.LENGTH_LONG).show();
+                                                        Toast.makeText(IssueDetailsActivity.this,
+                                                                R.string.issue_unlocked_toast,
+                                                                Toast.LENGTH_LONG).show();
 
-                                                    break;
-                                                case 401: {
+                                                        break;
+                                                    case 401: {
 
-                                                    Gson gson = new Gson();
-                                                    APIRequestError error = null;
-                                                    try {
-                                                        error = gson.fromJson(
-                                                                response.errorBody().string(),
-                                                                APIRequestError.class);
+                                                        Gson gson = new Gson();
+                                                        APIRequestError error = null;
+                                                        try {
+                                                            error = gson.fromJson(
+                                                                    response.errorBody().string(),
+                                                                    APIRequestError.class);
+                                                        }
+                                                        catch (IOException e) {
+                                                            e.printStackTrace();
+                                                        }
+
+                                                        if (error.getMessage().equals(getString(
+                                                                R.string.bad_credentials_error))) {
+
+                                                            new AlertDialog.Builder(
+                                                                    IssueDetailsActivity
+                                                                            .this).setTitle(
+                                                                    R.string.login_credentials_expired_title)
+                                                                    .setMessage(
+                                                                            R.string.expired_credentials_message)
+                                                                    .setPositiveButton(
+                                                                            R.string.ok_button_text,
+                                                                            new DialogInterface
+                                                                                    .OnClickListener() {
+
+                                                                                @Override
+                                                                                public void onClick(
+                                                                                        DialogInterface dialog,
+                                                                                        int which) {
+
+                                                                                    SharedPreferences
+                                                                                            preferences =
+                                                                                            PreferenceManager
+                                                                                                    .getDefaultSharedPreferences(
+                                                                                                            IssueDetailsActivity.this);
+                                                                                    Editor editor =
+                                                                                            preferences
+                                                                                                    .edit();
+                                                                                    editor.putString(
+                                                                                            getString(
+                                                                                                    R.string.oauth_token_key),
+                                                                                            null);
+                                                                                    editor.apply();
+                                                                                    FirebaseAuth
+                                                                                            .getInstance()
+                                                                                            .signOut();
+
+                                                                                    Intent
+                                                                                            logoutIntent =
+                                                                                            new Intent(
+                                                                                                    IssueDetailsActivity.this,
+                                                                                                    LoginActivity.class);
+                                                                                    logoutIntent
+                                                                                            .addFlags(
+                                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                                    dialog.dismiss();
+                                                                                    IssueDetailsActivity
+                                                                                            .this
+                                                                                            .startActivity(
+                                                                                                    logoutIntent);
+
+                                                                                }
+
+                                                                            }).create().show();
+
+                                                        }
+
+                                                        break;
                                                     }
-                                                    catch (IOException e) {
-                                                        e.printStackTrace();
+                                                    default: {
+
+                                                        swipeRefresh.setRefreshing(false);
+                                                        Gson gson = new Gson();
+                                                        APIRequestError error = null;
+                                                        try {
+                                                            error = gson.fromJson(
+                                                                    response.errorBody().string(),
+                                                                    APIRequestError.class);
+                                                        }
+                                                        catch (IOException e) {
+                                                            e.printStackTrace();
+                                                        }
+                                                        Toast.makeText(IssueDetailsActivity.this,
+                                                                error.getMessage(),
+                                                                Toast.LENGTH_LONG).show();
+
+                                                        break;
                                                     }
-
-                                                    if (error.getMessage().equals(getString(
-                                                            R.string.bad_credentials_error))) {
-
-                                                        new AlertDialog.Builder(
-                                                                IssueDetailsActivity.this).setTitle(
-                                                                R.string.login_credentials_expired_title)
-                                                                .setMessage(
-                                                                        R.string.expired_credentials_message)
-                                                                .setPositiveButton(
-                                                                        R.string.ok_button_text,
-                                                                        new DialogInterface
-                                                                                .OnClickListener() {
-
-                                                                            @Override
-                                                                            public void onClick(
-                                                                                    DialogInterface dialog,
-                                                                                    int which) {
-
-                                                                                SharedPreferences
-                                                                                        preferences =
-                                                                                        PreferenceManager
-                                                                                                .getDefaultSharedPreferences(
-                                                                                                        IssueDetailsActivity.this);
-                                                                                Editor editor =
-                                                                                        preferences
-                                                                                                .edit();
-                                                                                editor.putString(
-                                                                                        getString(
-                                                                                                R.string.oauth_token_key),
-                                                                                        null);
-                                                                                editor.apply();
-                                                                                FirebaseAuth
-                                                                                        .getInstance()
-                                                                                        .signOut();
-
-                                                                                Intent
-                                                                                        logoutIntent =
-                                                                                        new Intent(
-                                                                                                IssueDetailsActivity.this,
-                                                                                                LoginActivity.class);
-                                                                                logoutIntent
-                                                                                        .addFlags(
-                                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                                dialog.dismiss();
-                                                                                IssueDetailsActivity
-                                                                                        .this
-                                                                                        .startActivity(
-                                                                                                logoutIntent);
-
-                                                                            }
-
-                                                                        }).create().show();
-
-                                                    }
-
-                                                    break;
                                                 }
-                                                default: {
 
-                                                    swipeRefresh.setRefreshing(false);
-                                                    Gson gson = new Gson();
-                                                    APIRequestError error = null;
-                                                    try {
-                                                        error = gson.fromJson(
-                                                                response.errorBody().string(),
-                                                                APIRequestError.class);
-                                                    }
-                                                    catch (IOException e) {
-                                                        e.printStackTrace();
-                                                    }
-                                                    Toast.makeText(IssueDetailsActivity.this,
-                                                            error.getMessage(), Toast.LENGTH_LONG)
-                                                            .show();
-
-                                                    break;
-                                                }
                                             }
 
-                                        }
+                                            @Override
+                                            public void onFailure(Call<Issue> call, Throwable t) {
 
-                                        @Override
-                                        public void onFailure(Call<Issue> call, Throwable t) {
+                                                swipeRefresh.setRefreshing(false);
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        R.string.network_error_toast,
+                                                        Toast.LENGTH_LONG).show();
 
-                                            swipeRefresh.setRefreshing(false);
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    R.string.network_error_toast, Toast.LENGTH_LONG)
-                                                    .show();
+                                            }
+                                        });
 
-                                        }
-                                    });
+                    }
+                    else {
 
-                }
-                else {
+                        service.lockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                                .enqueue(
 
-                    service.lockIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
-                            .enqueue(
+                                        new Callback<Issue>() {
 
-                                    new Callback<Issue>() {
+                                            @Override
+                                            public void onResponse(Call<Issue> call,
+                                                                   Response<Issue> response) {
 
-                                        @Override
-                                        public void onResponse(Call<Issue> call,
-                                                               Response<Issue> response) {
+                                                switch (response.code()) {
+                                                    case 204:
 
-                                            switch (response.code()) {
-                                                case 204:
+                                                        refreshIssue();
+                                                        Toast.makeText(IssueDetailsActivity.this,
+                                                                R.string.issue_locked_toast,
+                                                                Toast.LENGTH_LONG).show();
 
-                                                    refreshIssue();
-                                                    Toast.makeText(IssueDetailsActivity.this,
-                                                            R.string.issue_locked_toast,
-                                                            Toast.LENGTH_LONG).show();
+                                                        break;
+                                                    case 401: {
 
-                                                    break;
-                                                case 401: {
+                                                        Gson gson = new Gson();
+                                                        APIRequestError error = null;
+                                                        try {
+                                                            error = gson.fromJson(
+                                                                    response.errorBody().string(),
+                                                                    APIRequestError.class);
+                                                        }
+                                                        catch (IOException e) {
+                                                            e.printStackTrace();
+                                                        }
 
-                                                    Gson gson = new Gson();
-                                                    APIRequestError error = null;
-                                                    try {
-                                                        error = gson.fromJson(
-                                                                response.errorBody().string(),
-                                                                APIRequestError.class);
+                                                        if (error.getMessage().equals(getString(
+                                                                R.string.bad_credentials_error))) {
+
+                                                            new AlertDialog.Builder(
+                                                                    IssueDetailsActivity
+                                                                            .this).setTitle(
+                                                                    R.string.login_credentials_expired_title)
+                                                                    .setMessage(
+                                                                            R.string.expired_credentials_message)
+                                                                    .setPositiveButton(
+                                                                            R.string.ok_button_text,
+                                                                            new DialogInterface
+                                                                                    .OnClickListener() {
+
+                                                                                @Override
+                                                                                public void onClick(
+                                                                                        DialogInterface dialog,
+                                                                                        int which) {
+
+                                                                                    SharedPreferences
+                                                                                            preferences =
+                                                                                            PreferenceManager
+                                                                                                    .getDefaultSharedPreferences(
+                                                                                                            IssueDetailsActivity.this);
+                                                                                    Editor editor =
+                                                                                            preferences
+                                                                                                    .edit();
+                                                                                    editor.putString(
+                                                                                            getString(
+                                                                                                    R.string.oauth_token_key),
+                                                                                            null);
+                                                                                    editor.apply();
+                                                                                    FirebaseAuth
+                                                                                            .getInstance()
+                                                                                            .signOut();
+
+                                                                                    Intent
+                                                                                            logoutIntent =
+                                                                                            new Intent(
+                                                                                                    IssueDetailsActivity.this,
+                                                                                                    LoginActivity.class);
+                                                                                    logoutIntent
+                                                                                            .addFlags(
+                                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                                    dialog.dismiss();
+                                                                                    IssueDetailsActivity
+                                                                                            .this
+                                                                                            .startActivity(
+                                                                                                    logoutIntent);
+
+                                                                                }
+
+                                                                            }).create().show();
+
+                                                        }
+
+                                                        break;
                                                     }
-                                                    catch (IOException e) {
-                                                        e.printStackTrace();
+                                                    default: {
+
+                                                        swipeRefresh.setRefreshing(false);
+                                                        Gson gson = new Gson();
+                                                        APIRequestError error = null;
+                                                        try {
+                                                            error = gson.fromJson(
+                                                                    response.errorBody().string(),
+                                                                    APIRequestError.class);
+                                                        }
+                                                        catch (IOException e) {
+                                                            e.printStackTrace();
+                                                        }
+                                                        Toast.makeText(IssueDetailsActivity.this,
+                                                                error.getMessage(),
+                                                                Toast.LENGTH_LONG).show();
+
+                                                        break;
                                                     }
-
-                                                    if (error.getMessage().equals(getString(
-                                                            R.string.bad_credentials_error))) {
-
-                                                        new AlertDialog.Builder(
-                                                                IssueDetailsActivity.this).setTitle(
-                                                                R.string.login_credentials_expired_title)
-                                                                .setMessage(
-                                                                        R.string.expired_credentials_message)
-                                                                .setPositiveButton(
-                                                                        R.string.ok_button_text,
-                                                                        new DialogInterface
-                                                                                .OnClickListener() {
-
-                                                                            @Override
-                                                                            public void onClick(
-                                                                                    DialogInterface dialog,
-                                                                                    int which) {
-
-                                                                                SharedPreferences
-                                                                                        preferences =
-                                                                                        PreferenceManager
-                                                                                                .getDefaultSharedPreferences(
-                                                                                                        IssueDetailsActivity.this);
-                                                                                Editor editor =
-                                                                                        preferences
-                                                                                                .edit();
-                                                                                editor.putString(
-                                                                                        getString(
-                                                                                                R.string.oauth_token_key),
-                                                                                        null);
-                                                                                editor.apply();
-                                                                                FirebaseAuth
-                                                                                        .getInstance()
-                                                                                        .signOut();
-
-                                                                                Intent
-                                                                                        logoutIntent =
-                                                                                        new Intent(
-                                                                                                IssueDetailsActivity.this,
-                                                                                                LoginActivity.class);
-                                                                                logoutIntent
-                                                                                        .addFlags(
-                                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                                dialog.dismiss();
-                                                                                IssueDetailsActivity
-                                                                                        .this
-                                                                                        .startActivity(
-                                                                                                logoutIntent);
-
-                                                                            }
-
-                                                                        }).create().show();
-
-                                                    }
-
-                                                    break;
                                                 }
-                                                default: {
 
-                                                    swipeRefresh.setRefreshing(false);
-                                                    Gson gson = new Gson();
-                                                    APIRequestError error = null;
-                                                    try {
-                                                        error = gson.fromJson(
-                                                                response.errorBody().string(),
-                                                                APIRequestError.class);
-                                                    }
-                                                    catch (IOException e) {
-                                                        e.printStackTrace();
-                                                    }
-                                                    Toast.makeText(IssueDetailsActivity.this,
-                                                            error.getMessage(), Toast.LENGTH_LONG)
-                                                            .show();
-
-                                                    break;
-                                                }
                                             }
 
-                                        }
+                                            @Override
+                                            public void onFailure(Call<Issue> call, Throwable t) {
 
-                                        @Override
-                                        public void onFailure(Call<Issue> call, Throwable t) {
+                                                swipeRefresh.setRefreshing(false);
+                                                Toast.makeText(IssueDetailsActivity.this,
+                                                        R.string.network_error_toast,
+                                                        Toast.LENGTH_LONG).show();
 
-                                            swipeRefresh.setRefreshing(false);
-                                            Toast.makeText(IssueDetailsActivity.this,
-                                                    R.string.network_error_toast, Toast.LENGTH_LONG)
-                                                    .show();
+                                            }
+                                        });
 
-                                        }
-                                    });
-
+                    }
+                    return true;
                 }
-                return true;
+                return false;
             case R.id.action_pin_unpin:
-                if (pinned) {
+                connectivityManager =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+                if (activeNetworkInfo != null && activeNetworkInfo.isConnected()) {
+                    if (pinned) {
 
-                    final DatabaseReference reference =
-                            userDataReference.child("pinned_issues").child(repositoryName);
-                    ValueEventListener issueCheckListener = new ValueEventListener() {
+                        final DatabaseReference reference =
+                                userDataReference.child("pinned_issues").child(repositoryName);
+                        ValueEventListener issueCheckListener = new ValueEventListener() {
 
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                            List<Integer> thisRepoPinnedIssues = new ArrayList<>();
+                                List<Integer> thisRepoPinnedIssues = new ArrayList<>();
 
-                            for (DataSnapshot issues : dataSnapshot.getChildren()) {
+                                for (DataSnapshot issues : dataSnapshot.getChildren()) {
 
-                                thisRepoPinnedIssues.add(issues.getValue(Integer.class));
+                                    thisRepoPinnedIssues.add(issues.getValue(Integer.class));
 
-                            }
-                            pinned = true;
-                            thisRepoPinnedIssues.remove((Integer) issue.getNumber());
-                            reference.setValue(thisRepoPinnedIssues);
-                            invalidateOptionsMenu();
-                            pinnedIssueMenuItems = null;
-                            loadPinnedIssues(user);
-
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                        }
-                    };
-                    reference.addListenerForSingleValueEvent(issueCheckListener);
-                    Toast.makeText(this, R.string.issue_unpinned_toast, Toast.LENGTH_LONG).show();
-
-                }
-                else {
-
-                    final DatabaseReference reference =
-                            userDataReference.child("pinned_issues").child(repositoryName);
-
-                    ValueEventListener issueCheckListener = new ValueEventListener() {
-
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                            List<Integer> thisRepoPinnedIssues = new ArrayList<>();
-
-                            for (DataSnapshot issues : dataSnapshot.getChildren()) {
-
-                                thisRepoPinnedIssues.add(issues.getValue(Integer.class));
+                                }
+                                pinned = true;
+                                thisRepoPinnedIssues.remove((Integer) issue.getNumber());
+                                reference.setValue(thisRepoPinnedIssues);
+                                invalidateOptionsMenu();
+                                pinnedIssueMenuItems = null;
+                                loadPinnedIssues(user);
 
                             }
-                            pinned = true;
-                            thisRepoPinnedIssues.add(issue.getNumber());
-                            reference.setValue(thisRepoPinnedIssues);
-                            invalidateOptionsMenu();
-                            pinnedIssueMenuItems = null;
-                            loadPinnedIssues(user);
 
-                        }
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                            }
+                        };
+                        reference.addListenerForSingleValueEvent(issueCheckListener);
+                        Toast.makeText(this, R.string.issue_unpinned_toast, Toast.LENGTH_LONG)
+                                .show();
 
-                        }
-                    };
-                    reference.addListenerForSingleValueEvent(issueCheckListener);
-                    Toast.makeText(this, R.string.issue_pinned_toast, Toast.LENGTH_LONG).show();
+                    }
+                    else {
 
+                        final DatabaseReference reference =
+                                userDataReference.child("pinned_issues").child(repositoryName);
+
+                        ValueEventListener issueCheckListener = new ValueEventListener() {
+
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                                List<Integer> thisRepoPinnedIssues = new ArrayList<>();
+
+                                for (DataSnapshot issues : dataSnapshot.getChildren()) {
+
+                                    thisRepoPinnedIssues.add(issues.getValue(Integer.class));
+
+                                }
+                                pinned = true;
+                                thisRepoPinnedIssues.add(issue.getNumber());
+                                reference.setValue(thisRepoPinnedIssues);
+                                invalidateOptionsMenu();
+                                pinnedIssueMenuItems = null;
+                                loadPinnedIssues(user);
+
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                            }
+                        };
+                        reference.addListenerForSingleValueEvent(issueCheckListener);
+                        Toast.makeText(this, R.string.issue_pinned_toast, Toast.LENGTH_LONG).show();
+
+                    }
+                    return true;
                 }
-                return true;
+                return false;
 
         }
 

@@ -183,7 +183,9 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                     headerView.setText(user.getLogin());
                     Glide.with(itemView).load(user.getAvatar_url())
                             .apply(RequestOptions.circleCropTransform()).into(avatar);
-                    avatar.setContentDescription(user.getLogin() + "'s avatar image");
+                    avatar.setContentDescription(
+                            context.getString(R.string.avatar_image_content_description,
+                                    user.getLogin()));
                     logoutText.setOnClickListener(new OnClickListener() {
 
                         @Override
