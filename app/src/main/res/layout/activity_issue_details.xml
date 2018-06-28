@@ -49,6 +49,7 @@
             android:layout_gravity="bottom|end"
             android:layout_marginBottom="@dimen/spacing_large"
             android:layout_marginEnd="@dimen/spacing_large"
+            android:contentDescription="@string/add_comment_conetent_description"
             android:src="@drawable/ic_add_white_24dp"
             android:visibility="invisible"
             app:fabSize="normal" />

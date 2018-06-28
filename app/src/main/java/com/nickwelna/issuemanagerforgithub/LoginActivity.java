@@ -61,7 +61,6 @@ public class LoginActivity extends AppCompatActivity {
     @BindView(R.id.progress_bar)
     ProgressBar progressBar;
     private FirebaseAuth mAuth;
-
     public static final String TWO_FACTOR_VISIBLE_KEY = "two_factor_visible";
 
     @Override
@@ -183,7 +182,8 @@ public class LoginActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (responseUnsuccessful.getMessage().equals(getString(R.string.bad_credentials_error))) {
+                                if (responseUnsuccessful.getMessage()
+                                        .equals(getString(R.string.bad_credentials_error))) {
 
                                     Toast.makeText(LoginActivity.this,
                                             R.string.bad_credentials_toast, Toast.LENGTH_LONG)
@@ -192,9 +192,8 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                                 else {
 
-                                    Toast.makeText(LoginActivity.this,
-                                            R.string.two_factor_toast, Toast.LENGTH_LONG)
-                                            .show();
+                                    Toast.makeText(LoginActivity.this, R.string.two_factor_toast,
+                                            Toast.LENGTH_LONG).show();
                                     twoFactorInputLayout.setVisibility(View.VISIBLE);
                                     passwordEditText.setImeOptions(EditorInfo.IME_ACTION_NEXT);
 
@@ -206,6 +205,11 @@ public class LoginActivity extends AppCompatActivity {
 
                         @Override
                         public void onFailure(Call<AuthorizationResponse> call, Throwable t) {
+
+                            group.setVisibility(View.VISIBLE);
+                            progressBar.setVisibility(View.GONE);
+                            Toast.makeText(LoginActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
 
                         }
 
@@ -221,7 +225,8 @@ public class LoginActivity extends AppCompatActivity {
                     .createService(usernameEditText.getText().toString(),
                             passwordEditText.getText().toString());
             Map<String, String> headers = new HashMap<>();
-            headers.put(getString(R.string.two_factor_header), twoFactorEditText.getText().toString());
+            headers.put(getString(R.string.two_factor_header),
+                    twoFactorEditText.getText().toString());
             service.authorizeUser(headers, new AuthorizationRequest())
                     .enqueue(new Callback<AuthorizationResponse>() {
 
@@ -251,7 +256,8 @@ public class LoginActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (responseUnsuccessful.getMessage().equals(getString(R.string.bad_credentials_error))) {
+                                if (responseUnsuccessful.getMessage()
+                                        .equals(getString(R.string.bad_credentials_error))) {
 
                                     Toast.makeText(LoginActivity.this,
                                             R.string.bad_credentials_toast, Toast.LENGTH_LONG)
@@ -273,6 +279,12 @@ public class LoginActivity extends AppCompatActivity {
 
                         @Override
                         public void onFailure(Call<AuthorizationResponse> call, Throwable t) {
+
+                            group.setVisibility(View.VISIBLE);
+                            twoFactorInputLayout.setVisibility(View.VISIBLE);
+                            progressBar.setVisibility(View.GONE);
+                            Toast.makeText(LoginActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
 
                         }
                     });
@@ -296,7 +308,8 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
 
                         if (!task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this, R.string.firebase_authentication_failed_toast,
+                            Toast.makeText(LoginActivity.this,
+                                    R.string.firebase_authentication_failed_toast,
                                     Toast.LENGTH_SHORT).show();
                         }
                         else {

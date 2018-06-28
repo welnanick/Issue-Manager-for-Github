@@ -123,7 +123,7 @@
         android:id="@+id/group"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:constraint_referenced_ids="username_input_layout,password_input_layout,login_button" />
+        app:constraint_referenced_ids="username_input_layout,password_input_layout,login_button, authorization_note" />
 
     <ProgressBar
         android:id="@+id/progress_bar"

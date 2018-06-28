@@ -268,6 +268,10 @@ public class EditCommentActivity extends AppCompatActivity {
                                     @Override
                                     public void onFailure(Call<Issue> call, Throwable t) {
 
+                                        Toast.makeText(EditCommentActivity.this,
+                                                R.string.network_error_toast, Toast.LENGTH_LONG)
+                                                .show();
+
                                     }
 
                                 });
@@ -352,6 +356,9 @@ public class EditCommentActivity extends AppCompatActivity {
 
                             @Override
                             public void onFailure(Call<Issue> call, Throwable t) {
+
+                                Toast.makeText(EditCommentActivity.this,
+                                        R.string.network_error_toast, Toast.LENGTH_LONG).show();
 
                             }
 
@@ -444,6 +451,9 @@ public class EditCommentActivity extends AppCompatActivity {
                             @Override
                             public void onFailure(Call<Issue> call, Throwable t) {
 
+                                Toast.makeText(EditCommentActivity.this,
+                                        R.string.network_error_toast, Toast.LENGTH_LONG).show();
+
                             }
                         });
 
@@ -529,6 +539,9 @@ public class EditCommentActivity extends AppCompatActivity {
 
                             @Override
                             public void onFailure(Call<Issue> call, Throwable t) {
+
+                                Toast.makeText(EditCommentActivity.this,
+                                        R.string.network_error_toast, Toast.LENGTH_LONG).show();
 
                             }
                         });

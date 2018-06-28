@@ -29,6 +29,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
     boolean loadSearch = false;
     String searchTextString;
     boolean rotated;
+    boolean connected;
     public static final String CURRENT_LIST_PINNED = "pinned";
     public static final String CURRENT_LIST_SEARCH = "search";
     public static final String USER_KEY = "user";
@@ -99,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         firstRun = true;
 
@@ -214,6 +217,10 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(Call<GithubUser> call, Throwable t) {
 
+                    swipeRefresh.setRefreshing(false);
+                    Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                            Toast.LENGTH_LONG).show();
+
                 }
             });
         }
@@ -245,7 +252,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadPinnedRepositories() {
 
-        if (visibleRepositories == null || refreshRequested || !rotated) {
+        firebaseConnected();
+
+        if (connected && (visibleRepositories == null || refreshRequested || !rotated)) {
 
             DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
             ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
@@ -275,6 +284,11 @@ public class MainActivity extends AppCompatActivity {
             refreshRequested = false;
 
         }
+        else if (!connected) {
+
+            swipeRefresh.setRefreshing(false);
+
+        }
         else {
 
             swipeRefresh.setRefreshing(false);
@@ -284,11 +298,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /**
-     * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
-     *
-     * @param user
-     */
     private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
@@ -296,7 +305,9 @@ public class MainActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null || !rotated) {
+        firebaseConnected();
+
+        if (connected && (pinnedIssueMenuItems == null || !rotated)) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
@@ -340,6 +351,13 @@ public class MainActivity extends AppCompatActivity {
             pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
 
         }
+        else if (!connected) {
+
+            swipeRefresh.setRefreshing(false);
+            Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                    .show();
+
+        }
         else {
 
             pinnedIssueAdapter.updatePinnedRepositories(pinnedIssueMenuItems);
@@ -355,6 +373,23 @@ public class MainActivity extends AppCompatActivity {
         if (user != null && !firstRun) {
 
             loadPinnedIssues(user);
+            DatabaseReference connectedRef =
+                    FirebaseDatabase.getInstance().getReference(".info/connected");
+            connectedRef.addValueEventListener(new ValueEventListener() {
+
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+
+                    connected = snapshot.getValue(Boolean.class);
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+
+            });
 
         }
         if (firstRun) {
@@ -388,7 +423,7 @@ public class MainActivity extends AppCompatActivity {
         SearchView searchView = (SearchView) searchItem.getActionView();
 
         //Set the query hint for the search view
-        searchView.setQueryHint("Search");
+        searchView.setQueryHint(getString(R.string.search_query_hint));
 
         //Access the Edit Text in the searchview
         searchText = searchView.findViewById(android.support.v7.appcompat.R.id.search_src_text);
@@ -556,6 +591,10 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onFailure(Call<SearchResult> call, Throwable t) {
 
+                            swipeRefresh.setRefreshing(false);
+                            Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
+
                         }
 
                     });
@@ -603,4 +642,27 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
+    private void firebaseConnected() {
+
+        DatabaseReference connectedRef =
+                FirebaseDatabase.getInstance().getReference(".info/connected");
+        connectedRef.addValueEventListener(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+
+                connected = snapshot.getValue(Boolean.class);
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+
+            }
+
+        });
+
+    }
+
 }

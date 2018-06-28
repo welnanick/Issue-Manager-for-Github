@@ -75,6 +75,7 @@ public class IssueListActivity extends AppCompatActivity {
     ArrayList<Issue> issues;
     boolean firstRun;
     boolean rotated;
+    boolean connected;
     public static final String REPOSITORY_KEY = "repository";
     public static final String USER_KEY = "user";
     public static final String PINNED_ISSUES_KEY = "pinned_issues";
@@ -105,6 +106,25 @@ public class IssueListActivity extends AppCompatActivity {
 
         }
         ButterKnife.bind(this);
+
+        DatabaseReference connectedRef =
+                FirebaseDatabase.getInstance().getReference(".info/connected");
+        connectedRef.addValueEventListener(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+
+                connected = snapshot.getValue(Boolean.class);
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+
+            }
+
+        });
+
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(repositoryName);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -219,6 +239,10 @@ public class IssueListActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(Call<GithubUser> call, Throwable t) {
 
+                    swipeRefresh.setRefreshing(false);
+                    Toast.makeText(IssueListActivity.this, R.string.network_error_toast,
+                            Toast.LENGTH_LONG).show();
+
                 }
             });
         }
@@ -232,7 +256,9 @@ public class IssueListActivity extends AppCompatActivity {
 
     private void refreshPinnedRepositories() {
 
-        if (pinnedRepositories == null || !rotated) {
+        firebaseConnected();
+
+        if (connected && (pinnedRepositories == null || !rotated)) {
 
             DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
             ValueEventListener pinnedRepositoryListener = new ValueEventListener() {
@@ -260,14 +286,14 @@ public class IssueListActivity extends AppCompatActivity {
             pinnedRepos.addListenerForSingleValueEvent(pinnedRepositoryListener);
 
         }
+        else if (!connected) {
+
+            swipeRefresh.setRefreshing(false);
+
+        }
 
     }
 
-    /**
-     * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
-     *
-     * @param user
-     */
     private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
@@ -275,7 +301,9 @@ public class IssueListActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null || !rotated) {
+        firebaseConnected();
+
+        if (connected && (pinnedIssueMenuItems == null || !rotated)) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssueMenuItems.add(new PinnedIssueMenuItem(0));
@@ -317,6 +345,13 @@ public class IssueListActivity extends AppCompatActivity {
                 }
             };
             pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+
+        }
+        else if (!connected) {
+
+            swipeRefresh.setRefreshing(false);
+            Toast.makeText(IssueListActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
+                    .show();
 
         }
         else {
@@ -406,7 +441,12 @@ public class IssueListActivity extends AppCompatActivity {
                         @Override
                         public void onFailure(Call<ArrayList<Issue>> call, Throwable t) {
 
+                            swipeRefresh.setRefreshing(false);
+                            Toast.makeText(IssueListActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
+
                         }
+
                     });
         }
         else {
@@ -428,6 +468,23 @@ public class IssueListActivity extends AppCompatActivity {
         if (user != null && !firstRun) {
 
             loadPinnedIssues(user);
+            DatabaseReference connectedRef =
+                    FirebaseDatabase.getInstance().getReference(".info/connected");
+            connectedRef.addValueEventListener(new ValueEventListener() {
+
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+
+                    connected = snapshot.getValue(Boolean.class);
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+
+            });
 
         }
         if (firstRun) {
@@ -557,6 +614,28 @@ public class IssueListActivity extends AppCompatActivity {
         outState.putParcelableArrayList(PINNED_ISSUES_KEY, pinnedIssueMenuItems);
         outState.putParcelableArrayList(ISSUES_KEY, issues);
         outState.putParcelableArrayList(PINNED_REPOSITORIES_KEY, pinnedRepositories);
+
+    }
+
+    private void firebaseConnected() {
+
+        DatabaseReference connectedRef =
+                FirebaseDatabase.getInstance().getReference(".info/connected");
+        connectedRef.addValueEventListener(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+
+                connected = snapshot.getValue(Boolean.class);
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+
+            }
+
+        });
 
     }
 

@@ -101,17 +101,10 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
         void bind(final Issue issue) {
 
             issueTitle.setText(issue.getTitle());
-            issueNumber.setText(String.format("%s%s", '#', String.valueOf(issue.getNumber())));
-            if (issue.getComments() != 1) {
-
-                issueComments.setText(String.format("%d comments", issue.getComments()));
-
-            }
-            else {
-
-                issueComments.setText(R.string.one_comment_text);
-
-            }
+            issueNumber.setText(context.getString(R.string.issue_number_format, issue.getNumber()));
+            issueComments.setText(context.getResources()
+                    .getQuantityString(R.plurals.comments_format, issue.getComments(),
+                            issue.getComments()));
             String issueState = issue.getState();
             String issueStateCap =
                     issueState.substring(0, 1).toUpperCase() + issueState.substring(1);

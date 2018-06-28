@@ -81,6 +81,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     IssueCommentCommon[] allComments;
     boolean pinned;
     boolean rotated;
+    boolean connected;
     public static final String REPO_NAME_KEY = "repo_name";
     public static final String FROM_PINNED_KEY = "from_pinned";
     public static final String USER_KEY = "user";
@@ -95,6 +96,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_issue_details);
         ButterKnife.bind(this);
+
+        DatabaseReference connectedRef =
+                FirebaseDatabase.getInstance().getReference(".info/connected");
+        connectedRef.addValueEventListener(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+
+                connected = snapshot.getValue(Boolean.class);
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+
+            }
+
+        });
+
         firstRun = true;
 
         Bundle extras = getIntent().getExtras();
@@ -236,6 +256,10 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(Call<GithubUser> call, Throwable t) {
 
+                    swipeRefresh.setRefreshing(false);
+                    Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
+                            Toast.LENGTH_LONG).show();
+
                 }
             });
         }
@@ -323,16 +347,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<Issue> call, Throwable t) {
 
+                        swipeRefresh.setRefreshing(false);
+                        Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
+                                Toast.LENGTH_LONG).show();
+
                     }
                 });
 
     }
 
-    /**
-     * Thi method fetches the pinned issues from firebase, and adds them to the navigation drawer
-     *
-     * @param user
-     */
     private void loadPinnedIssues(GithubUser user) {
 
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
@@ -340,7 +363,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         final PinnedIssueAdapter pinnedIssueAdapter = new PinnedIssueAdapter(user);
         menuRecyclerView.setAdapter(pinnedIssueAdapter);
 
-        if (pinnedIssueMenuItems == null || !rotated) {
+        if (connected && (pinnedIssueMenuItems == null || !rotated)) {
 
             pinnedIssueMenuItems = new ArrayList<>();
             pinnedIssues = new ArrayList<>();
@@ -385,6 +408,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 }
             };
             pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
+
+        }
+        else if (!connected) {
 
         }
         else {
@@ -477,6 +503,10 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
                         @Override
                         public void onFailure(Call<Comment[]> call, Throwable t) {
+
+                            swipeRefresh.setRefreshing(false);
+                            Toast.makeText(IssueDetailsActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
 
                         }
                     });
@@ -572,98 +602,107 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                 @Override
                                 public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                    if (response.code() == 200) {
+                                    switch (response.code()) {
+                                        case 200:
 
-                                        issue = response.body();
-                                        invalidateOptionsMenu();
-                                        loadComments();
-                                        Toast.makeText(IssueDetailsActivity.this,
-                                                R.string.issue_opened_toast, Toast.LENGTH_LONG)
-                                                .show();
+                                            issue = response.body();
+                                            invalidateOptionsMenu();
+                                            loadComments();
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    R.string.issue_opened_toast, Toast.LENGTH_LONG)
+                                                    .show();
 
-                                    }
-                                    else if (response.code() == 401) {
+                                            break;
+                                        case 401: {
 
-                                        Gson gson = new Gson();
-                                        APIRequestError error = null;
-                                        try {
-                                            error = gson.fromJson(response.errorBody().string(),
-                                                    APIRequestError.class);
+                                            Gson gson = new Gson();
+                                            APIRequestError error = null;
+                                            try {
+                                                error = gson.fromJson(response.errorBody().string(),
+                                                        APIRequestError.class);
+                                            }
+                                            catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            if (error.getMessage().equals(getString(
+                                                    R.string.bad_credentials_error))) {
+
+                                                new AlertDialog.Builder(IssueDetailsActivity.this)
+                                                        .setTitle(
+                                                                R.string.login_credentials_expired_title)
+                                                        .setMessage(
+                                                                R.string.expired_credentials_message)
+                                                        .setPositiveButton(R.string.ok_button_text,
+                                                                new DialogInterface
+                                                                        .OnClickListener() {
+
+                                                                    @Override
+                                                                    public void onClick(
+                                                                            DialogInterface dialog,
+                                                                            int which) {
+
+                                                                        SharedPreferences
+                                                                                preferences =
+                                                                                PreferenceManager
+                                                                                        .getDefaultSharedPreferences(
+                                                                                                IssueDetailsActivity.this);
+                                                                        Editor editor =
+                                                                                preferences.edit();
+                                                                        editor.putString(getString(
+                                                                                R.string.oauth_token_key),
+                                                                                null);
+                                                                        editor.apply();
+                                                                        FirebaseAuth.getInstance()
+                                                                                .signOut();
+
+                                                                        Intent logoutIntent =
+                                                                                new Intent(
+                                                                                        IssueDetailsActivity.this,
+                                                                                        LoginActivity.class);
+                                                                        logoutIntent.addFlags(
+                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                        dialog.dismiss();
+                                                                        IssueDetailsActivity.this
+                                                                                .startActivity(
+                                                                                        logoutIntent);
+
+                                                                    }
+
+                                                                }).create().show();
+
+                                            }
+
+                                            break;
                                         }
-                                        catch (IOException e) {
-                                            e.printStackTrace();
+                                        default: {
+
+                                            swipeRefresh.setRefreshing(false);
+                                            Gson gson = new Gson();
+                                            APIRequestError error = null;
+                                            try {
+                                                error = gson.fromJson(response.errorBody().string(),
+                                                        APIRequestError.class);
+                                            }
+                                            catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    error.getMessage(), Toast.LENGTH_LONG).show();
+
+                                            break;
                                         }
-
-                                        if (error.getMessage().equals(getString(
-                                                R.string.bad_credentials_error))) {
-
-                                            new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                    .setTitle(
-                                                            R.string.login_credentials_expired_title)
-                                                    .setMessage(
-                                                            R.string.expired_credentials_message)
-                                                    .setPositiveButton(R.string.ok_button_text,
-                                                            new DialogInterface.OnClickListener() {
-
-                                                                @Override
-                                                                public void onClick(
-                                                                        DialogInterface dialog,
-                                                                        int which) {
-
-                                                                    SharedPreferences preferences =
-                                                                            PreferenceManager
-                                                                                    .getDefaultSharedPreferences(
-                                                                                            IssueDetailsActivity.this);
-                                                                    Editor editor =
-                                                                            preferences.edit();
-                                                                    editor.putString(getString(
-                                                                            R.string.oauth_token_key),
-                                                                            null);
-                                                                    editor.apply();
-                                                                    FirebaseAuth.getInstance()
-                                                                            .signOut();
-
-                                                                    Intent logoutIntent =
-                                                                            new Intent(
-                                                                                    IssueDetailsActivity.this,
-                                                                                    LoginActivity
-                                                                                            .class);
-                                                                    logoutIntent.addFlags(
-                                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                    dialog.dismiss();
-                                                                    IssueDetailsActivity.this
-                                                                            .startActivity(
-                                                                                    logoutIntent);
-
-                                                                }
-
-                                                            }).create().show();
-
-                                        }
-
-                                    }
-                                    else {
-
-                                        swipeRefresh.setRefreshing(false);
-                                        Gson gson = new Gson();
-                                        APIRequestError error = null;
-                                        try {
-                                            error = gson.fromJson(response.errorBody().string(),
-                                                    APIRequestError.class);
-                                        }
-                                        catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
-                                        Toast.makeText(IssueDetailsActivity.this,
-                                                error.getMessage(), Toast.LENGTH_LONG).show();
-
                                     }
 
                                 }
 
                                 @Override
                                 public void onFailure(Call<Issue> call, Throwable t) {
+
+                                    swipeRefresh.setRefreshing(false);
+                                    Toast.makeText(IssueDetailsActivity.this,
+                                            R.string.network_error_toast, Toast.LENGTH_LONG).show();
 
                                 }
                             });
@@ -680,98 +719,107 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                 @Override
                                 public void onResponse(Call<Issue> call, Response<Issue> response) {
 
-                                    if (response.code() == 200) {
+                                    switch (response.code()) {
+                                        case 200:
 
-                                        issue = response.body();
-                                        invalidateOptionsMenu();
-                                        loadComments();
-                                        Toast.makeText(IssueDetailsActivity.this,
-                                                R.string.issue_closed_toast, Toast.LENGTH_LONG)
-                                                .show();
+                                            issue = response.body();
+                                            invalidateOptionsMenu();
+                                            loadComments();
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    R.string.issue_closed_toast, Toast.LENGTH_LONG)
+                                                    .show();
 
-                                    }
-                                    else if (response.code() == 401) {
+                                            break;
+                                        case 401: {
 
-                                        Gson gson = new Gson();
-                                        APIRequestError error = null;
-                                        try {
-                                            error = gson.fromJson(response.errorBody().string(),
-                                                    APIRequestError.class);
+                                            Gson gson = new Gson();
+                                            APIRequestError error = null;
+                                            try {
+                                                error = gson.fromJson(response.errorBody().string(),
+                                                        APIRequestError.class);
+                                            }
+                                            catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            if (error.getMessage().equals(getString(
+                                                    R.string.bad_credentials_error))) {
+
+                                                new AlertDialog.Builder(IssueDetailsActivity.this)
+                                                        .setTitle(
+                                                                R.string.login_credentials_expired_title)
+                                                        .setMessage(
+                                                                R.string.expired_credentials_message)
+                                                        .setPositiveButton(R.string.ok_button_text,
+                                                                new DialogInterface
+                                                                        .OnClickListener() {
+
+                                                                    @Override
+                                                                    public void onClick(
+                                                                            DialogInterface dialog,
+                                                                            int which) {
+
+                                                                        SharedPreferences
+                                                                                preferences =
+                                                                                PreferenceManager
+                                                                                        .getDefaultSharedPreferences(
+                                                                                                IssueDetailsActivity.this);
+                                                                        Editor editor =
+                                                                                preferences.edit();
+                                                                        editor.putString(getString(
+                                                                                R.string.oauth_token_key),
+                                                                                null);
+                                                                        editor.apply();
+                                                                        FirebaseAuth.getInstance()
+                                                                                .signOut();
+
+                                                                        Intent logoutIntent =
+                                                                                new Intent(
+                                                                                        IssueDetailsActivity.this,
+                                                                                        LoginActivity.class);
+                                                                        logoutIntent.addFlags(
+                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                        dialog.dismiss();
+                                                                        IssueDetailsActivity.this
+                                                                                .startActivity(
+                                                                                        logoutIntent);
+
+                                                                    }
+
+                                                                }).create().show();
+
+                                            }
+
+                                            break;
                                         }
-                                        catch (IOException e) {
-                                            e.printStackTrace();
+                                        default: {
+
+                                            swipeRefresh.setRefreshing(false);
+                                            Gson gson = new Gson();
+                                            APIRequestError error = null;
+                                            try {
+                                                error = gson.fromJson(response.errorBody().string(),
+                                                        APIRequestError.class);
+                                            }
+                                            catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    error.getMessage(), Toast.LENGTH_LONG).show();
+
+                                            break;
                                         }
-
-                                        if (error.getMessage().equals(getString(
-                                                R.string.bad_credentials_error))) {
-
-                                            new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                    .setTitle(
-                                                            R.string.login_credentials_expired_title)
-                                                    .setMessage(
-                                                            R.string.expired_credentials_message)
-                                                    .setPositiveButton(R.string.ok_button_text,
-                                                            new DialogInterface.OnClickListener() {
-
-                                                                @Override
-                                                                public void onClick(
-                                                                        DialogInterface dialog,
-                                                                        int which) {
-
-                                                                    SharedPreferences preferences =
-                                                                            PreferenceManager
-                                                                                    .getDefaultSharedPreferences(
-                                                                                            IssueDetailsActivity.this);
-                                                                    Editor editor =
-                                                                            preferences.edit();
-                                                                    editor.putString(getString(
-                                                                            R.string.oauth_token_key),
-                                                                            null);
-                                                                    editor.apply();
-                                                                    FirebaseAuth.getInstance()
-                                                                            .signOut();
-
-                                                                    Intent logoutIntent =
-                                                                            new Intent(
-                                                                                    IssueDetailsActivity.this,
-                                                                                    LoginActivity
-                                                                                            .class);
-                                                                    logoutIntent.addFlags(
-                                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                    dialog.dismiss();
-                                                                    IssueDetailsActivity.this
-                                                                            .startActivity(
-                                                                                    logoutIntent);
-
-                                                                }
-
-                                                            }).create().show();
-
-                                        }
-
-                                    }
-                                    else {
-
-                                        swipeRefresh.setRefreshing(false);
-                                        Gson gson = new Gson();
-                                        APIRequestError error = null;
-                                        try {
-                                            error = gson.fromJson(response.errorBody().string(),
-                                                    APIRequestError.class);
-                                        }
-                                        catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
-                                        Toast.makeText(IssueDetailsActivity.this,
-                                                error.getMessage(), Toast.LENGTH_LONG).show();
-
                                     }
 
                                 }
 
                                 @Override
                                 public void onFailure(Call<Issue> call, Throwable t) {
+
+                                    swipeRefresh.setRefreshing(false);
+                                    Toast.makeText(IssueDetailsActivity.this,
+                                            R.string.network_error_toast, Toast.LENGTH_LONG).show();
 
                                 }
                             });
@@ -792,107 +840,117 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                         public void onResponse(Call<Issue> call,
                                                                Response<Issue> response) {
 
-                                            if (response.code() == 204) {
+                                            switch (response.code()) {
+                                                case 204:
 
-                                                refreshIssue();
+                                                    refreshIssue();
 
-                                                Toast.makeText(IssueDetailsActivity.this,
-                                                        R.string.issue_unlocked_toast,
-                                                        Toast.LENGTH_LONG).show();
+                                                    Toast.makeText(IssueDetailsActivity.this,
+                                                            R.string.issue_unlocked_toast,
+                                                            Toast.LENGTH_LONG).show();
 
-                                            }
-                                            else if (response.code() == 401) {
+                                                    break;
+                                                case 401: {
 
-                                                Gson gson = new Gson();
-                                                APIRequestError error = null;
-                                                try {
-                                                    error = gson.fromJson(
-                                                            response.errorBody().string(),
-                                                            APIRequestError.class);
+                                                    Gson gson = new Gson();
+                                                    APIRequestError error = null;
+                                                    try {
+                                                        error = gson.fromJson(
+                                                                response.errorBody().string(),
+                                                                APIRequestError.class);
+                                                    }
+                                                    catch (IOException e) {
+                                                        e.printStackTrace();
+                                                    }
+
+                                                    if (error.getMessage().equals(getString(
+                                                            R.string.bad_credentials_error))) {
+
+                                                        new AlertDialog.Builder(
+                                                                IssueDetailsActivity.this).setTitle(
+                                                                R.string.login_credentials_expired_title)
+                                                                .setMessage(
+                                                                        R.string.expired_credentials_message)
+                                                                .setPositiveButton(
+                                                                        R.string.ok_button_text,
+                                                                        new DialogInterface
+                                                                                .OnClickListener() {
+
+                                                                            @Override
+                                                                            public void onClick(
+                                                                                    DialogInterface dialog,
+                                                                                    int which) {
+
+                                                                                SharedPreferences
+                                                                                        preferences =
+                                                                                        PreferenceManager
+                                                                                                .getDefaultSharedPreferences(
+                                                                                                        IssueDetailsActivity.this);
+                                                                                Editor editor =
+                                                                                        preferences
+                                                                                                .edit();
+                                                                                editor.putString(
+                                                                                        getString(
+                                                                                                R.string.oauth_token_key),
+                                                                                        null);
+                                                                                editor.apply();
+                                                                                FirebaseAuth
+                                                                                        .getInstance()
+                                                                                        .signOut();
+
+                                                                                Intent
+                                                                                        logoutIntent =
+                                                                                        new Intent(
+                                                                                                IssueDetailsActivity.this,
+                                                                                                LoginActivity.class);
+                                                                                logoutIntent
+                                                                                        .addFlags(
+                                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                                dialog.dismiss();
+                                                                                IssueDetailsActivity
+                                                                                        .this
+                                                                                        .startActivity(
+                                                                                                logoutIntent);
+
+                                                                            }
+
+                                                                        }).create().show();
+
+                                                    }
+
+                                                    break;
                                                 }
-                                                catch (IOException e) {
-                                                    e.printStackTrace();
+                                                default: {
+
+                                                    swipeRefresh.setRefreshing(false);
+                                                    Gson gson = new Gson();
+                                                    APIRequestError error = null;
+                                                    try {
+                                                        error = gson.fromJson(
+                                                                response.errorBody().string(),
+                                                                APIRequestError.class);
+                                                    }
+                                                    catch (IOException e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                    Toast.makeText(IssueDetailsActivity.this,
+                                                            error.getMessage(), Toast.LENGTH_LONG)
+                                                            .show();
+
+                                                    break;
                                                 }
-
-                                                if (error.getMessage().equals(getString(
-                                                        R.string.bad_credentials_error))) {
-
-                                                    new AlertDialog.Builder(
-                                                            IssueDetailsActivity.this).setTitle(
-                                                            R.string.login_credentials_expired_title)
-                                                            .setMessage(
-                                                                    R.string.expired_credentials_message)
-                                                            .setPositiveButton(
-                                                                    R.string.ok_button_text,
-                                                                    new DialogInterface
-                                                                            .OnClickListener() {
-
-                                                                        @Override
-                                                                        public void onClick(
-                                                                                DialogInterface
-                                                                                        dialog,
-                                                                                int which) {
-
-                                                                            SharedPreferences
-                                                                                    preferences =
-                                                                                    PreferenceManager
-                                                                                            .getDefaultSharedPreferences(
-                                                                                                    IssueDetailsActivity.this);
-                                                                            Editor editor =
-                                                                                    preferences
-                                                                                            .edit();
-                                                                            editor.putString(
-                                                                                    getString(
-                                                                                            R.string.oauth_token_key),
-                                                                                    null);
-                                                                            editor.apply();
-                                                                            FirebaseAuth
-                                                                                    .getInstance()
-                                                                                    .signOut();
-
-                                                                            Intent logoutIntent =
-                                                                                    new Intent(
-                                                                                            IssueDetailsActivity.this,
-                                                                                            LoginActivity.class);
-                                                                            logoutIntent.addFlags(
-                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                            dialog.dismiss();
-                                                                            IssueDetailsActivity
-                                                                                    .this
-                                                                                    .startActivity(
-                                                                                            logoutIntent);
-
-                                                                        }
-
-                                                                    }).create().show();
-
-                                                }
-
-                                            }
-                                            else {
-
-                                                swipeRefresh.setRefreshing(false);
-                                                Gson gson = new Gson();
-                                                APIRequestError error = null;
-                                                try {
-                                                    error = gson.fromJson(
-                                                            response.errorBody().string(),
-                                                            APIRequestError.class);
-                                                }
-                                                catch (IOException e) {
-                                                    e.printStackTrace();
-                                                }
-                                                Toast.makeText(IssueDetailsActivity.this,
-                                                        error.getMessage(), Toast.LENGTH_LONG)
-                                                        .show();
-
                                             }
 
                                         }
 
                                         @Override
                                         public void onFailure(Call<Issue> call, Throwable t) {
+
+                                            swipeRefresh.setRefreshing(false);
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    R.string.network_error_toast, Toast.LENGTH_LONG)
+                                                    .show();
 
                                         }
                                     });
@@ -909,106 +967,116 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                         public void onResponse(Call<Issue> call,
                                                                Response<Issue> response) {
 
-                                            if (response.code() == 204) {
+                                            switch (response.code()) {
+                                                case 204:
 
-                                                refreshIssue();
-                                                Toast.makeText(IssueDetailsActivity.this,
-                                                        R.string.issue_locked_toast,
-                                                        Toast.LENGTH_LONG).show();
+                                                    refreshIssue();
+                                                    Toast.makeText(IssueDetailsActivity.this,
+                                                            R.string.issue_locked_toast,
+                                                            Toast.LENGTH_LONG).show();
 
-                                            }
-                                            else if (response.code() == 401) {
+                                                    break;
+                                                case 401: {
 
-                                                Gson gson = new Gson();
-                                                APIRequestError error = null;
-                                                try {
-                                                    error = gson.fromJson(
-                                                            response.errorBody().string(),
-                                                            APIRequestError.class);
+                                                    Gson gson = new Gson();
+                                                    APIRequestError error = null;
+                                                    try {
+                                                        error = gson.fromJson(
+                                                                response.errorBody().string(),
+                                                                APIRequestError.class);
+                                                    }
+                                                    catch (IOException e) {
+                                                        e.printStackTrace();
+                                                    }
+
+                                                    if (error.getMessage().equals(getString(
+                                                            R.string.bad_credentials_error))) {
+
+                                                        new AlertDialog.Builder(
+                                                                IssueDetailsActivity.this).setTitle(
+                                                                R.string.login_credentials_expired_title)
+                                                                .setMessage(
+                                                                        R.string.expired_credentials_message)
+                                                                .setPositiveButton(
+                                                                        R.string.ok_button_text,
+                                                                        new DialogInterface
+                                                                                .OnClickListener() {
+
+                                                                            @Override
+                                                                            public void onClick(
+                                                                                    DialogInterface dialog,
+                                                                                    int which) {
+
+                                                                                SharedPreferences
+                                                                                        preferences =
+                                                                                        PreferenceManager
+                                                                                                .getDefaultSharedPreferences(
+                                                                                                        IssueDetailsActivity.this);
+                                                                                Editor editor =
+                                                                                        preferences
+                                                                                                .edit();
+                                                                                editor.putString(
+                                                                                        getString(
+                                                                                                R.string.oauth_token_key),
+                                                                                        null);
+                                                                                editor.apply();
+                                                                                FirebaseAuth
+                                                                                        .getInstance()
+                                                                                        .signOut();
+
+                                                                                Intent
+                                                                                        logoutIntent =
+                                                                                        new Intent(
+                                                                                                IssueDetailsActivity.this,
+                                                                                                LoginActivity.class);
+                                                                                logoutIntent
+                                                                                        .addFlags(
+                                                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                                                dialog.dismiss();
+                                                                                IssueDetailsActivity
+                                                                                        .this
+                                                                                        .startActivity(
+                                                                                                logoutIntent);
+
+                                                                            }
+
+                                                                        }).create().show();
+
+                                                    }
+
+                                                    break;
                                                 }
-                                                catch (IOException e) {
-                                                    e.printStackTrace();
+                                                default: {
+
+                                                    swipeRefresh.setRefreshing(false);
+                                                    Gson gson = new Gson();
+                                                    APIRequestError error = null;
+                                                    try {
+                                                        error = gson.fromJson(
+                                                                response.errorBody().string(),
+                                                                APIRequestError.class);
+                                                    }
+                                                    catch (IOException e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                    Toast.makeText(IssueDetailsActivity.this,
+                                                            error.getMessage(), Toast.LENGTH_LONG)
+                                                            .show();
+
+                                                    break;
                                                 }
-
-                                                if (error.getMessage().equals(getString(
-                                                        R.string.bad_credentials_error))) {
-
-                                                    new AlertDialog.Builder(
-                                                            IssueDetailsActivity.this).setTitle(
-                                                            R.string.login_credentials_expired_title)
-                                                            .setMessage(
-                                                                    R.string.expired_credentials_message)
-                                                            .setPositiveButton(
-                                                                    R.string.ok_button_text,
-                                                                    new DialogInterface
-                                                                            .OnClickListener() {
-
-                                                                        @Override
-                                                                        public void onClick(
-                                                                                DialogInterface
-                                                                                        dialog,
-                                                                                int which) {
-
-                                                                            SharedPreferences
-                                                                                    preferences =
-                                                                                    PreferenceManager
-                                                                                            .getDefaultSharedPreferences(
-                                                                                                    IssueDetailsActivity.this);
-                                                                            Editor editor =
-                                                                                    preferences
-                                                                                            .edit();
-                                                                            editor.putString(
-                                                                                    getString(
-                                                                                            R.string.oauth_token_key),
-                                                                                    null);
-                                                                            editor.apply();
-                                                                            FirebaseAuth
-                                                                                    .getInstance()
-                                                                                    .signOut();
-
-                                                                            Intent logoutIntent =
-                                                                                    new Intent(
-                                                                                            IssueDetailsActivity.this,
-                                                                                            LoginActivity.class);
-                                                                            logoutIntent.addFlags(
-                                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                                            dialog.dismiss();
-                                                                            IssueDetailsActivity
-                                                                                    .this
-                                                                                    .startActivity(
-                                                                                            logoutIntent);
-
-                                                                        }
-
-                                                                    }).create().show();
-
-                                                }
-
-                                            }
-                                            else {
-
-                                                swipeRefresh.setRefreshing(false);
-                                                Gson gson = new Gson();
-                                                APIRequestError error = null;
-                                                try {
-                                                    error = gson.fromJson(
-                                                            response.errorBody().string(),
-                                                            APIRequestError.class);
-                                                }
-                                                catch (IOException e) {
-                                                    e.printStackTrace();
-                                                }
-                                                Toast.makeText(IssueDetailsActivity.this,
-                                                        error.getMessage(), Toast.LENGTH_LONG)
-                                                        .show();
-
                                             }
 
                                         }
 
                                         @Override
                                         public void onFailure(Call<Issue> call, Throwable t) {
+
+                                            swipeRefresh.setRefreshing(false);
+                                            Toast.makeText(IssueDetailsActivity.this,
+                                                    R.string.network_error_toast, Toast.LENGTH_LONG)
+                                                    .show();
 
                                         }
                                     });
@@ -1100,6 +1168,23 @@ public class IssueDetailsActivity extends AppCompatActivity {
         if (!addComment.isShown() && !firstRun) {
 
             addComment.show();
+            DatabaseReference connectedRef =
+                    FirebaseDatabase.getInstance().getReference(".info/connected");
+            connectedRef.addValueEventListener(new ValueEventListener() {
+
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+
+                    connected = snapshot.getValue(Boolean.class);
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+
+                }
+
+            });
 
         }
         if (!firstRun) {

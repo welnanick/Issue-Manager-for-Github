@@ -18,6 +18,7 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -139,34 +140,37 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
             this.viewType = viewType;
             this.context = context;
             logoutAlert = new Builder(context).setTitle(R.string.Logout_title)
-                    .setNegativeButton(R.string.no_button_text, new DialogInterface.OnClickListener() {
+                    .setNegativeButton(R.string.no_button_text,
+                            new DialogInterface.OnClickListener() {
 
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
 
-                            dialog.dismiss();
+                                    dialog.dismiss();
 
-                        }
+                                }
 
-                    }).setPositiveButton(R.string.yes_button_text, new DialogInterface.OnClickListener() {
+                            }).setPositiveButton(R.string.yes_button_text,
+                            new DialogInterface.OnClickListener() {
 
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
 
-                            SharedPreferences preferences =
-                                    PreferenceManager.getDefaultSharedPreferences(context);
-                            Editor editor = preferences.edit();
-                            editor.putString(context.getString(R.string.oauth_token_key), null);
-                            editor.apply();
-                            FirebaseAuth.getInstance().signOut();
+                                    SharedPreferences preferences =
+                                            PreferenceManager.getDefaultSharedPreferences(context);
+                                    Editor editor = preferences.edit();
+                                    editor.putString(context.getString(R.string.oauth_token_key),
+                                            null);
+                                    editor.apply();
+                                    FirebaseAuth.getInstance().signOut();
 
-                            Intent logoutIntent = new Intent(context, LoginActivity.class);
-                            logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            dialog.dismiss();
-                            context.startActivity(logoutIntent);
-                        }
-                    }).create();
+                                    Intent logoutIntent = new Intent(context, LoginActivity.class);
+                                    logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    dialog.dismiss();
+                                    context.startActivity(logoutIntent);
+                                }
+                            }).create();
             ButterKnife.bind(this, itemView);
 
         }
@@ -216,7 +220,8 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                     SharedPreferences preferences =
                             PreferenceManager.getDefaultSharedPreferences(context);
-                    String token = preferences.getString(context.getString(R.string.oauth_token_key), null);
+                    String token = preferences
+                            .getString(context.getString(R.string.oauth_token_key), null);
                     GitHubService service = ServiceGenerator.createService(token);
                     String[] repoNameSplit = item.text.split("/");
                     service.getIssue(repoNameSplit[0], repoNameSplit[1], item.number)
@@ -237,11 +242,13 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                             e.printStackTrace();
                                         }
 
-                                        if (error.getMessage().equals(context.getString(R.string.bad_credentials_error))) {
+                                        if (error.getMessage().equals(context
+                                                .getString(R.string.bad_credentials_error))) {
 
-                                            new Builder(context)
-                                                    .setTitle(R.string.login_credentials_expired_title)
-                                                    .setMessage(R.string.expired_credentials_message)
+                                            new Builder(context).setTitle(
+                                                    R.string.login_credentials_expired_title)
+                                                    .setMessage(
+                                                            R.string.expired_credentials_message)
                                                     .setPositiveButton(R.string.ok_button_text,
                                                             new DialogInterface.OnClickListener() {
 
@@ -256,7 +263,9 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                                                                             context);
                                                                     Editor editor =
                                                                             preferences.edit();
-                                                                    editor.putString(context.getString(R.string.oauth_token_key),
+                                                                    editor.putString(
+                                                                            context.getString(
+                                                                                    R.string.oauth_token_key),
                                                                             null);
                                                                     editor.apply();
                                                                     FirebaseAuth.getInstance()
@@ -284,7 +293,9 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                                         final Issue issue = response.body();
                                         text.setText(issue.getTitle());
-                                        subText.setText("# " + issue.getNumber());
+                                        subText.setText(
+                                                context.getString(R.string.issue_number_format,
+                                                        issue.getNumber()));
                                         itemView.setOnClickListener(new OnClickListener() {
 
                                             @Override
@@ -294,10 +305,14 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                                         IssueDetailsActivity.class);
 
                                                 Bundle extras = new Bundle();
-                                                extras.putParcelable(IssueDetailsActivity.ISSUE_KEY, issue);
-                                                extras.putBoolean(IssueDetailsActivity.FROM_PINNED_KEY, true);
-                                                extras.putString(IssueDetailsActivity.REPO_NAME_KEY, item.text);
-                                                extras.putParcelable(IssueDetailsActivity.USER_KEY, user);
+                                                extras.putParcelable(IssueDetailsActivity.ISSUE_KEY,
+                                                        issue);
+                                                extras.putBoolean(
+                                                        IssueDetailsActivity.FROM_PINNED_KEY, true);
+                                                extras.putString(IssueDetailsActivity.REPO_NAME_KEY,
+                                                        item.text);
+                                                extras.putParcelable(IssueDetailsActivity.USER_KEY,
+                                                        user);
                                                 viewIssueDetailsIntent.putExtras(extras);
                                                 context.startActivity(viewIssueDetailsIntent);
 
@@ -311,6 +326,9 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                                 @Override
                                 public void onFailure(Call<Issue> call, Throwable t) {
+
+                                    Toast.makeText(context, R.string.network_error_toast,
+                                            Toast.LENGTH_LONG).show();
 
                                 }
                             });

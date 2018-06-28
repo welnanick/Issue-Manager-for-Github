@@ -134,7 +134,9 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
             body.setText(comment.getBody());
             Glide.with(itemView).load(comment.getUser().getAvatar_url())
                     .apply(RequestOptions.circleCropTransform()).into(avatar);
-            avatar.setContentDescription(comment.getUser().getLogin() + "'s avatar image");
+            avatar.setContentDescription(
+                    context.getString(R.string.avatar_image_content_description,
+                            comment.getUser().getLogin()));
 
             if (!comment.getUser().getLogin().equals(usernameString)) {
 
@@ -238,8 +240,9 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
                                                                                 if (error
                                                                                         .getMessage()
-                                                                                        .equals(R
-                                                                                                .string.bad_credentials_error)) {
+                                                                                        .equals(context
+                                                                                                .getString(
+                                                                                                        R.string.bad_credentials_error))) {
 
                                                                                     new Builder(
                                                                                             context)
@@ -317,6 +320,11 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                                                                                 Call<Issue> call,
                                                                                 Throwable t) {
 
+                                                                            Toast.makeText(context,
+                                                                                    R.string.network_error_toast,
+                                                                                    Toast.LENGTH_LONG)
+                                                                                    .show();
+
                                                                         }
                                                                     });
 
@@ -358,14 +366,18 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                     .getRelativeTimeSpanString(date.getTime(), new Date().getTime(), 0,
                             FORMAT_ABBREV_MONTH);
 
-            if (!result.contains("ago") && !result.contains("In") && !result.equals("Yesterday")) {
+            if (!result.contains(context.getString(R.string.ago_string)) &&
+                    !result.contains(context.getString(
 
-                return "on " + result;
+                            R.string.in_string)) &&
+                    !result.equals(context.getString(R.string.yesterday_string))) {
+
+                return context.getString(R.string.how_long_format, result);
 
             }
             else {
 
-                if (result.equals("Yesterday")) {
+                if (result.equals(context.getString(R.string.yesterday_string))) {
 
                     result = result.toLowerCase();
 
