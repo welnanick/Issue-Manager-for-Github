@@ -8,6 +8,15 @@ android {
     def keystoreProperties = new Properties()
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
+    signingConfigs {
+        submission {
+            keyAlias 'submisson'
+            keyPassword 'udacity'
+            storeFile file('../submission_keystore.jks')
+            storePassword 'udacity'
+        }
+    }
+
     defaultConfig {
         applicationId "com.nickwelna.issuemanagerforgithub"
         minSdkVersion 21
@@ -21,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.submission
         }
     }
 }

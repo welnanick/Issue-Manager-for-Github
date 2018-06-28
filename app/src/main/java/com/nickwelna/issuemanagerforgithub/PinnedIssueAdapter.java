@@ -113,10 +113,10 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
     static class PinnedIssueViewHolder extends RecyclerView.ViewHolder {
 
         @Nullable
-        @BindView(R.id.text)
+        @BindView(R.id.issue_title)
         TextView text;
         @Nullable
-        @BindView(R.id.sub_text)
+        @BindView(R.id.issue_number)
         TextView subText;
         @Nullable
         @BindView(R.id.header_view)
@@ -138,8 +138,8 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
             this.itemView = itemView;
             this.viewType = viewType;
             this.context = context;
-            logoutAlert = new AlertDialog.Builder(context).setTitle("Logout?")
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+            logoutAlert = new Builder(context).setTitle(R.string.Logout_title)
+                    .setNegativeButton(R.string.no_button_text, new DialogInterface.OnClickListener() {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
@@ -148,7 +148,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                         }
 
-                    }).setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    }).setPositiveButton(R.string.yes_button_text, new DialogInterface.OnClickListener() {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
@@ -156,7 +156,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                             SharedPreferences preferences =
                                     PreferenceManager.getDefaultSharedPreferences(context);
                             Editor editor = preferences.edit();
-                            editor.putString("OAuth_token", null);
+                            editor.putString(context.getString(R.string.oauth_token_key), null);
                             editor.apply();
                             FirebaseAuth.getInstance().signOut();
 
@@ -179,6 +179,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                     headerView.setText(user.getLogin());
                     Glide.with(itemView).load(user.getAvatar_url())
                             .apply(RequestOptions.circleCropTransform()).into(avatar);
+                    avatar.setContentDescription(user.getLogin() + "'s avatar image");
                     logoutText.setOnClickListener(new OnClickListener() {
 
                         @Override
@@ -201,8 +202,8 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                             Intent viewRepoIntent = new Intent(context, IssueListActivity.class);
                             Bundle extras = new Bundle();
-                            extras.putString("repository", item.text);
-                            extras.putParcelable("user", user);
+                            extras.putString(IssueListActivity.REPOSITORY_KEY, item.text);
+                            extras.putParcelable(IssueListActivity.USER_KEY, user);
                             viewRepoIntent.putExtras(extras);
                             context.startActivity(viewRepoIntent);
 
@@ -215,7 +216,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
 
                     SharedPreferences preferences =
                             PreferenceManager.getDefaultSharedPreferences(context);
-                    String token = preferences.getString("OAuth_token", null);
+                    String token = preferences.getString(context.getString(R.string.oauth_token_key), null);
                     GitHubService service = ServiceGenerator.createService(token);
                     String[] repoNameSplit = item.text.split("/");
                     service.getIssue(repoNameSplit[0], repoNameSplit[1], item.number)
@@ -236,13 +237,12 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                             e.printStackTrace();
                                         }
 
-                                        if (error.getMessage().equals("Bad credentials")) {
+                                        if (error.getMessage().equals(context.getString(R.string.bad_credentials_error))) {
 
                                             new Builder(context)
-                                                    .setTitle("Login Credentials Expired")
-                                                    .setMessage("Your login credentials have " +
-                                                            "expired, please log in " + "again")
-                                                    .setPositiveButton("Ok",
+                                                    .setTitle(R.string.login_credentials_expired_title)
+                                                    .setMessage(R.string.expired_credentials_message)
+                                                    .setPositiveButton(R.string.ok_button_text,
                                                             new DialogInterface.OnClickListener() {
 
                                                                 @Override
@@ -256,7 +256,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                                                                             context);
                                                                     Editor editor =
                                                                             preferences.edit();
-                                                                    editor.putString("OAuth_token",
+                                                                    editor.putString(context.getString(R.string.oauth_token_key),
                                                                             null);
                                                                     editor.apply();
                                                                     FirebaseAuth.getInstance()
@@ -294,10 +294,10 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                                         IssueDetailsActivity.class);
 
                                                 Bundle extras = new Bundle();
-                                                extras.putParcelable("Issue", issue);
-                                                extras.putBoolean("from-pinned", true);
-                                                extras.putString("repo-name", item.text);
-                                                extras.putParcelable("user", user);
+                                                extras.putParcelable(IssueDetailsActivity.ISSUE_KEY, issue);
+                                                extras.putBoolean(IssueDetailsActivity.FROM_PINNED_KEY, true);
+                                                extras.putString(IssueDetailsActivity.REPO_NAME_KEY, item.text);
+                                                extras.putParcelable(IssueDetailsActivity.USER_KEY, user);
                                                 viewIssueDetailsIntent.putExtras(extras);
                                                 context.startActivity(viewIssueDetailsIntent);
 

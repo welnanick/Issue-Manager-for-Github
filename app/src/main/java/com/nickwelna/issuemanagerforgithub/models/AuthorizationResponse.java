@@ -10,7 +10,6 @@ public class AuthorizationResponse {
     String token_last_eight;
     String note;
     String note_url;
-    //TODO: Replace these with Date class
     String created_at;
     String updated_at;
     String[] scopes;

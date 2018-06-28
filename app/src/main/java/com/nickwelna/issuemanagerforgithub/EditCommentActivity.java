@@ -8,7 +8,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
-import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -51,6 +51,16 @@ public class EditCommentActivity extends AppCompatActivity {
     String repositoryName;
     int commentId;
     int issueNumber;
+    public static final String ACTION_KEY = "action";
+    public static final String TYPE_KEY = "type";
+    public static final String COMMENT_KEY = "comment";
+    public static final String REPO_NAME_KEY = "repo_name";
+    public static final String ISSUE_NUMBER_KEY = "issue_number";
+    public static final String COMMENT_ID_KEY = "action";
+    public static final String ACTION_ADD = "add";
+    public static final String ACTION_EDIT = "edit";
+    public static final String TYPE_ISSUE = "issue";
+    public static final String TYPE_COMMENT = "comment";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,31 +70,31 @@ public class EditCommentActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         Bundle extras = getIntent().getExtras();
-        final String action = extras.getString("action");
-        final String type = extras.getString("type");
-        IssueCommentCommon comment = extras.getParcelable("comment");
-        repositoryName = extras.getString("repo_name");
-        issueNumber = extras.getInt("issue_number");
-        commentId = extras.getInt("comment_id");
+        final String action = extras.getString(ACTION_KEY);
+        final String type = extras.getString(TYPE_KEY);
+        IssueCommentCommon comment = extras.getParcelable(COMMENT_KEY);
+        repositoryName = extras.getString(REPO_NAME_KEY);
+        issueNumber = extras.getInt(ISSUE_NUMBER_KEY);
+        commentId = extras.getInt(COMMENT_ID_KEY);
         StringBuilder titleBuilder = new StringBuilder();
         switch (action) {
 
-            case "add":
-                titleBuilder.append("Add ");
+            case ACTION_ADD:
+                titleBuilder.append(getString(R.string.add_title_append));
                 break;
 
-            case "edit":
-                titleBuilder.append("Edit ");
+            case ACTION_EDIT:
+                titleBuilder.append(getString(R.string.edit_title_append));
                 bodyEditText.setText(comment.getBody());
                 break;
 
         }
         switch (type) {
 
-            case "issue":
-                titleBuilder.append("Issue");
+            case TYPE_ISSUE:
+                titleBuilder.append(getString(R.string.issue_title_append));
 
-                if (action.equals("edit")) {
+                if (action.equals(ACTION_EDIT)) {
 
                     titleEditText.setText(((Issue) comment).getTitle());
 
@@ -92,8 +102,8 @@ public class EditCommentActivity extends AppCompatActivity {
 
                 break;
 
-            case "comment":
-                titleBuilder.append("Comment");
+            case TYPE_COMMENT:
+                titleBuilder.append(getString(R.string.comment_title_append));
                 titleInputLayout.setVisibility(View.GONE);
                 break;
 
@@ -110,7 +120,7 @@ public class EditCommentActivity extends AppCompatActivity {
 
                     if (TextUtils.isEmpty(titleEditText.getText().toString())) {
 
-                        titleInputLayout.setError("You must enter a title");
+                        titleInputLayout.setError(getString(R.string.issue_title_error_text));
 
                     }
                     else {
@@ -156,7 +166,7 @@ public class EditCommentActivity extends AppCompatActivity {
         });
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        String token = preferences.getString("OAuth_token", null);
+        String token = preferences.getString(getString(R.string.oauth_token_key), null);
 
         service = ServiceGenerator.createService(token);
 
@@ -166,11 +176,11 @@ public class EditCommentActivity extends AppCompatActivity {
 
         switch (action) {
 
-            case "add":
+            case ACTION_ADD:
 
                 switch (type) {
 
-                    case "issue":
+                    case TYPE_ISSUE:
 
                         String[] repoNameSplit = repositoryName.split("/");
                         IssueAddEditRequest issueRequest = new IssueAddEditRequest();
@@ -195,13 +205,14 @@ public class EditCommentActivity extends AppCompatActivity {
                                                 e.printStackTrace();
                                             }
 
-                                            if (error.getMessage().equals("Bad credentials")) {
+                                            if (error.getMessage().equals(getString(
+                                                    R.string.bad_credentials_error))) {
 
-                                                new AlertDialog.Builder(EditCommentActivity.this)
-                                                        .setTitle("Login Credentials Expired")
-                                                        .setMessage("Your login credentials have " +
-                                                                "expired, please log in " + "again")
-                                                        .setPositiveButton("Ok",
+                                                new Builder(EditCommentActivity.this).setTitle(
+                                                        R.string.login_credentials_expired_title)
+                                                        .setMessage(
+                                                                R.string.expired_credentials_message)
+                                                        .setPositiveButton(R.string.ok_button_text,
                                                                 new DialogInterface
                                                                         .OnClickListener() {
 
@@ -217,8 +228,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                                                                                 EditCommentActivity.this);
                                                                         Editor editor =
                                                                                 preferences.edit();
-                                                                        editor.putString(
-                                                                                "OAuth_token",
+                                                                        editor.putString(getString(
+                                                                                R.string.oauth_token_key),
                                                                                 null);
                                                                         editor.apply();
                                                                         FirebaseAuth.getInstance()
@@ -246,8 +257,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                         else {
 
                                             Toast.makeText(EditCommentActivity.this,
-                                                    "New Issue submitted", Toast.LENGTH_LONG)
-                                                    .show();
+                                                    R.string.new_issue_submitted_toast,
+                                                    Toast.LENGTH_LONG).show();
                                             finish();
 
                                         }
@@ -262,7 +273,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                 });
                         break;
 
-                    case "comment":
+                    case TYPE_COMMENT:
 
                         repoNameSplit = repositoryName.split("/");
                         CommentAddEditRequest commentRequest = new CommentAddEditRequest();
@@ -285,13 +296,13 @@ public class EditCommentActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
-                                    if (error.getMessage().equals("Bad credentials")) {
+                                    if (error.getMessage()
+                                            .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new AlertDialog.Builder(EditCommentActivity.this)
-                                                .setTitle("Login Credentials Expired").setMessage(
-                                                "Your login credentials have " +
-                                                        "expired, please log in " + "again")
-                                                .setPositiveButton("Ok",
+                                        new Builder(EditCommentActivity.this)
+                                                .setTitle(R.string.login_credentials_expired_title)
+                                                .setMessage(R.string.expired_credentials_message)
+                                                .setPositiveButton(R.string.ok_button_text,
                                                         new DialogInterface.OnClickListener() {
 
                                                             @Override
@@ -304,7 +315,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                                                                 .getDefaultSharedPreferences(
                                                                                         EditCommentActivity.this);
                                                                 Editor editor = preferences.edit();
-                                                                editor.putString("OAuth_token",
+                                                                editor.putString(getString(
+                                                                        R.string.oauth_token_key),
                                                                         null);
                                                                 editor.apply();
                                                                 FirebaseAuth.getInstance()
@@ -331,7 +343,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                 else {
 
                                     Toast.makeText(EditCommentActivity.this,
-                                            "New Comment " + "submitted", Toast.LENGTH_LONG).show();
+                                            R.string.new_comment_toast, Toast.LENGTH_LONG).show();
                                     finish();
 
                                 }
@@ -348,10 +360,10 @@ public class EditCommentActivity extends AppCompatActivity {
 
                 }
 
-            case "edit":
+            case ACTION_EDIT:
                 switch (type) {
 
-                    case "issue":
+                    case TYPE_ISSUE:
 
                         String[] repoNameSplit = repositoryName.split("/");
                         IssueAddEditRequest issueRequest = new IssueAddEditRequest();
@@ -375,13 +387,13 @@ public class EditCommentActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
-                                    if (error.getMessage().equals("Bad credentials")) {
+                                    if (error.getMessage()
+                                            .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new AlertDialog.Builder(EditCommentActivity.this)
-                                                .setTitle("Login Credentials Expired").setMessage(
-                                                "Your login credentials have " +
-                                                        "expired, please log in " + "again")
-                                                .setPositiveButton("Ok",
+                                        new Builder(EditCommentActivity.this)
+                                                .setTitle(R.string.login_credentials_expired_title)
+                                                .setMessage(R.string.expired_credentials_message)
+                                                .setPositiveButton(R.string.ok_button_text,
                                                         new DialogInterface.OnClickListener() {
 
                                                             @Override
@@ -394,7 +406,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                                                                 .getDefaultSharedPreferences(
                                                                                         EditCommentActivity.this);
                                                                 Editor editor = preferences.edit();
-                                                                editor.putString("OAuth_token",
+                                                                editor.putString(getString(
+                                                                        R.string.oauth_token_key),
                                                                         null);
                                                                 editor.apply();
                                                                 FirebaseAuth.getInstance()
@@ -421,7 +434,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                 else {
 
                                     Toast.makeText(EditCommentActivity.this,
-                                            "Issue changes submitted", Toast.LENGTH_LONG).show();
+                                            R.string.issue_change_toast, Toast.LENGTH_LONG).show();
                                     finish();
 
                                 }
@@ -436,7 +449,7 @@ public class EditCommentActivity extends AppCompatActivity {
 
                         break;
 
-                    case "comment":
+                    case TYPE_COMMENT:
 
                         repoNameSplit = repositoryName.split("/");
                         CommentAddEditRequest commentRequest = new CommentAddEditRequest();
@@ -459,13 +472,13 @@ public class EditCommentActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
-                                    if (error.getMessage().equals("Bad credentials")) {
+                                    if (error.getMessage()
+                                            .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new AlertDialog.Builder(EditCommentActivity.this)
-                                                .setTitle("Login Credentials Expired").setMessage(
-                                                "Your login credentials have " +
-                                                        "expired, please log in " + "again")
-                                                .setPositiveButton("Ok",
+                                        new Builder(EditCommentActivity.this)
+                                                .setTitle(R.string.login_credentials_expired_title)
+                                                .setMessage(R.string.expired_credentials_message)
+                                                .setPositiveButton(R.string.ok_button_text,
                                                         new DialogInterface.OnClickListener() {
 
                                                             @Override
@@ -478,7 +491,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                                                                 .getDefaultSharedPreferences(
                                                                                         EditCommentActivity.this);
                                                                 Editor editor = preferences.edit();
-                                                                editor.putString("OAuth_token",
+                                                                editor.putString(getString(
+                                                                        R.string.oauth_token_key),
                                                                         null);
                                                                 editor.apply();
                                                                 FirebaseAuth.getInstance()
@@ -505,7 +519,8 @@ public class EditCommentActivity extends AppCompatActivity {
                                 else {
 
                                     Toast.makeText(EditCommentActivity.this,
-                                            "Comment changes submitted", Toast.LENGTH_LONG).show();
+                                            R.string.comment_change_toast, Toast.LENGTH_LONG)
+                                            .show();
                                     finish();
 
                                 }
@@ -528,26 +543,28 @@ public class EditCommentActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
-        new AlertDialog.Builder(this).setTitle("Discard Changes?")
-                .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
+        new Builder(this).setTitle(R.string.discard_changes_title)
+                .setPositiveButton(R.string.discard_button_text,
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+
+                                dialog.dismiss();
+                                finish();
+
+                            }
+
+                        }).setNegativeButton(R.string.cancel_button_text,
+                new DialogInterface.OnClickListener() {
 
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
 
-                        dialog.dismiss();
-                        finish();
+                        dialog.cancel();
 
                     }
-
-                }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-
-                dialog.cancel();
-
-            }
-        }).create().show();
+                }).create().show();
 
     }
 

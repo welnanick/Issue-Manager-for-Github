@@ -54,7 +54,6 @@ public class Repository implements Parcelable {
     String labels_url;
     String releases_url;
     String deployments_url;
-    //TODO: Switch to use date class rather than strings
     String created_at;
     String updated_at;
     String pushed_at;
@@ -112,6 +111,7 @@ public class Repository implements Parcelable {
     public int describeContents() {
 
         return 0;
+
     }
 
     @Override
@@ -190,6 +190,7 @@ public class Repository implements Parcelable {
         dest.writeInt(this.watchers);
         dest.writeString(this.default_branch);
         dest.writeDouble(this.score);
+
     }
 
     public Repository() {
@@ -271,6 +272,7 @@ public class Repository implements Parcelable {
         this.watchers = in.readInt();
         this.default_branch = in.readString();
         this.score = in.readDouble();
+
     }
 
     public static final Creator<Repository> CREATOR = new Creator<Repository>() {
@@ -279,12 +281,16 @@ public class Repository implements Parcelable {
         public Repository createFromParcel(Parcel source) {
 
             return new Repository(source);
+
         }
 
         @Override
         public Repository[] newArray(int size) {
 
             return new Repository[size];
+
         }
+
     };
+
 }

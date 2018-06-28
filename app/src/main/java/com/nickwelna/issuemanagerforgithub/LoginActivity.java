@@ -62,11 +62,13 @@ public class LoginActivity extends AppCompatActivity {
     ProgressBar progressBar;
     private FirebaseAuth mAuth;
 
+    public static final String TWO_FACTOR_VISIBLE_KEY = "two_factor_visible";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        if (preferences.getString("OAuth_token", null) != null) {
+        if (preferences.getString(getString(R.string.oauth_token_key), null) != null) {
 
             Intent pinnedRepositoryIntent = new Intent(this, MainActivity.class);
             startActivity(pinnedRepositoryIntent);
@@ -80,7 +82,7 @@ public class LoginActivity extends AppCompatActivity {
 
         if (savedInstanceState != null) {
 
-            if (savedInstanceState.getBoolean("two_factor_visible")) {
+            if (savedInstanceState.getBoolean(TWO_FACTOR_VISIBLE_KEY)) {
 
                 twoFactorInputLayout.setVisibility(View.VISIBLE);
 
@@ -181,17 +183,17 @@ public class LoginActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (responseUnsuccessful.getMessage().equals("Bad credentials")) {
+                                if (responseUnsuccessful.getMessage().equals(getString(R.string.bad_credentials_error))) {
 
                                     Toast.makeText(LoginActivity.this,
-                                            "Bad Credentials, please try again", Toast.LENGTH_LONG)
+                                            R.string.bad_credentials_toast, Toast.LENGTH_LONG)
                                             .show();
 
                                 }
                                 else {
 
                                     Toast.makeText(LoginActivity.this,
-                                            "Two Factor Authentication required", Toast.LENGTH_LONG)
+                                            R.string.two_factor_toast, Toast.LENGTH_LONG)
                                             .show();
                                     twoFactorInputLayout.setVisibility(View.VISIBLE);
                                     passwordEditText.setImeOptions(EditorInfo.IME_ACTION_NEXT);
@@ -219,7 +221,7 @@ public class LoginActivity extends AppCompatActivity {
                     .createService(usernameEditText.getText().toString(),
                             passwordEditText.getText().toString());
             Map<String, String> headers = new HashMap<>();
-            headers.put("X-Github-OTP", twoFactorEditText.getText().toString());
+            headers.put(getString(R.string.two_factor_header), twoFactorEditText.getText().toString());
             service.authorizeUser(headers, new AuthorizationRequest())
                     .enqueue(new Callback<AuthorizationResponse>() {
 
@@ -249,17 +251,17 @@ public class LoginActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (responseUnsuccessful.getMessage().equals("Bad Credentials")) {
+                                if (responseUnsuccessful.getMessage().equals(getString(R.string.bad_credentials_error))) {
 
                                     Toast.makeText(LoginActivity.this,
-                                            "Bad Credentials, please try again", Toast.LENGTH_LONG)
+                                            R.string.bad_credentials_toast, Toast.LENGTH_LONG)
                                             .show();
 
                                 }
                                 else {
 
                                     Toast.makeText(LoginActivity.this,
-                                            "Two Factor Authentication code incorrect",
+                                            R.string.two_factor_code_incorrect_toast,
                                             Toast.LENGTH_LONG).show();
                                     twoFactorInputLayout.setVisibility(View.VISIBLE);
 
@@ -283,7 +285,7 @@ public class LoginActivity extends AppCompatActivity {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         Editor editor = preferences.edit();
-        editor.putString("OAuth_token", body.getToken());
+        editor.putString(getString(R.string.oauth_token_key), body.getToken());
         editor.apply();
 
         AuthCredential credential = GithubAuthProvider.getCredential(body.getToken());
@@ -294,7 +296,7 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
 
                         if (!task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this, "Firebase Authentication failed.",
+                            Toast.makeText(LoginActivity.this, R.string.firebase_authentication_failed_toast,
                                     Toast.LENGTH_SHORT).show();
                         }
                         else {
@@ -314,7 +316,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
 
         super.onSaveInstanceState(outState);
-        outState.putBoolean("two_factor_visible",
+        outState.putBoolean(TWO_FACTOR_VISIBLE_KEY,
                 twoFactorInputLayout.getVisibility() == View.VISIBLE);
 
     }

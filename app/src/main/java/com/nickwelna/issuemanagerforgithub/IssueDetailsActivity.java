@@ -81,6 +81,13 @@ public class IssueDetailsActivity extends AppCompatActivity {
     IssueCommentCommon[] allComments;
     boolean pinned;
     boolean rotated;
+    public static final String REPO_NAME_KEY = "repo_name";
+    public static final String FROM_PINNED_KEY = "from_pinned";
+    public static final String USER_KEY = "user";
+    public static final String PINNED_ISSUES_MENU_KEY = "pinned_issues_menu";
+    public static final String ALL_COMMENTS_KEY = "all_comments";
+    public static final String ISSUE_KEY = "issue";
+    public static final String PINNED_ISSUES_KEY = "pinned_issues";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,23 +99,24 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         Bundle extras = getIntent().getExtras();
 
-        repositoryName = extras.getString("repo-name");
-        fromPinned = extras.getBoolean("from-pinned");
+        repositoryName = extras.getString(REPO_NAME_KEY);
+        fromPinned = extras.getBoolean(FROM_PINNED_KEY);
         if (savedInstanceState != null) {
 
-            user = savedInstanceState.getParcelable("user");
-            pinnedIssueMenuItems = savedInstanceState.getParcelableArrayList("pinned_issues_menu");
+            user = savedInstanceState.getParcelable(USER_KEY);
+            pinnedIssueMenuItems =
+                    savedInstanceState.getParcelableArrayList(PINNED_ISSUES_MENU_KEY);
             allComments =
-                    (IssueCommentCommon[]) savedInstanceState.getParcelableArray("all_comments");
-            issue = savedInstanceState.getParcelable("issue");
-            pinnedIssues = savedInstanceState.getIntegerArrayList("pinned_issues");
+                    (IssueCommentCommon[]) savedInstanceState.getParcelableArray(ALL_COMMENTS_KEY);
+            issue = savedInstanceState.getParcelable(ISSUE_KEY);
+            pinnedIssues = savedInstanceState.getIntegerArrayList(PINNED_ISSUES_KEY);
             rotated = true;
 
         }
         else {
 
-            user = extras.getParcelable("user");
-            issue = extras.getParcelable("Issue");
+            user = extras.getParcelable(USER_KEY);
+            issue = extras.getParcelable(ISSUE_KEY);
 
         }
         setSupportActionBar(toolbar);
@@ -139,10 +147,10 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 Intent addCommentIntent =
                         new Intent(IssueDetailsActivity.this, EditCommentActivity.class);
                 Bundle extras = new Bundle();
-                extras.putString("action", "add");
-                extras.putString("type", "comment");
-                extras.putInt("issue_number", issue.getNumber());
-                extras.putString("repo_name", repositoryName);
+                extras.putString(EditCommentActivity.ACTION_KEY, EditCommentActivity.ACTION_ADD);
+                extras.putString(EditCommentActivity.TYPE_KEY, EditCommentActivity.TYPE_COMMENT);
+                extras.putInt(EditCommentActivity.ISSUE_NUMBER_KEY, issue.getNumber());
+                extras.putString(EditCommentActivity.REPO_NAME_KEY, repositoryName);
                 addCommentIntent.putExtras(extras);
                 startActivity(addCommentIntent);
 
@@ -152,7 +160,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        String token = preferences.getString("OAuth_token", null);
+        String token = preferences.getString(getString(R.string.oauth_token_key), null);
 
         service = ServiceGenerator.createService(token);
         if (user == null) {
@@ -173,36 +181,43 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
 
-                        if (error.getMessage().equals("Bad credentials")) {
+                        if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
 
                             new AlertDialog.Builder(IssueDetailsActivity.this)
-                                    .setTitle("Login Credentials Expired").setMessage(
-                                    "Your login credentials have " + "expired, please log in " +
-                                            "again")
-                                    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                    .setTitle(R.string.login_credentials_expired_title)
+                                    .setMessage(R.string.expired_credentials_message)
+                                    .setPositiveButton(R.string.ok_button_text,
+                                            new DialogInterface.OnClickListener() {
 
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
+                                                @Override
+                                                public void onClick(DialogInterface dialog,
+                                                                    int which) {
 
-                                            SharedPreferences preferences = PreferenceManager
-                                                    .getDefaultSharedPreferences(
-                                                            IssueDetailsActivity.this);
-                                            Editor editor = preferences.edit();
-                                            editor.putString("OAuth_token", null);
-                                            editor.apply();
-                                            FirebaseAuth.getInstance().signOut();
+                                                    SharedPreferences preferences =
+                                                            PreferenceManager
+                                                                    .getDefaultSharedPreferences(
+                                                                            IssueDetailsActivity
+                                                                                    .this);
+                                                    Editor editor = preferences.edit();
+                                                    editor.putString(
+                                                            getString(R.string.oauth_token_key),
+                                                            null);
+                                                    editor.apply();
+                                                    FirebaseAuth.getInstance().signOut();
 
-                                            Intent logoutIntent =
-                                                    new Intent(IssueDetailsActivity.this,
-                                                            LoginActivity.class);
-                                            logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                            dialog.dismiss();
-                                            IssueDetailsActivity.this.startActivity(logoutIntent);
+                                                    Intent logoutIntent =
+                                                            new Intent(IssueDetailsActivity.this,
+                                                                    LoginActivity.class);
+                                                    logoutIntent.addFlags(
+                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                    dialog.dismiss();
+                                                    IssueDetailsActivity.this
+                                                            .startActivity(logoutIntent);
 
-                                        }
+                                                }
 
-                                    }).create().show();
+                                            }).create().show();
 
                         }
 
@@ -254,38 +269,43 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                 e.printStackTrace();
                             }
 
-                            if (error.getMessage().equals("Bad credentials")) {
+                            if (error.getMessage()
+                                    .equals(getString(R.string.bad_credentials_error))) {
 
                                 new AlertDialog.Builder(IssueDetailsActivity.this)
-                                        .setTitle("Login Credentials Expired").setMessage(
-                                        "Your login credentials have " + "expired, please log in " +
-                                                "again").setPositiveButton("Ok",
-                                        new DialogInterface.OnClickListener() {
+                                        .setTitle(R.string.login_credentials_expired_title)
+                                        .setMessage(R.string.expired_credentials_message)
+                                        .setPositiveButton(R.string.ok_button_text,
+                                                new DialogInterface.OnClickListener() {
 
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
+                                                    @Override
+                                                    public void onClick(DialogInterface dialog,
+                                                                        int which) {
 
-                                                SharedPreferences preferences = PreferenceManager
-                                                        .getDefaultSharedPreferences(
-                                                                IssueDetailsActivity.this);
-                                                Editor editor = preferences.edit();
-                                                editor.putString("OAuth_token", null);
-                                                editor.apply();
-                                                FirebaseAuth.getInstance().signOut();
+                                                        SharedPreferences preferences =
+                                                                PreferenceManager
+                                                                        .getDefaultSharedPreferences(
+                                                                                IssueDetailsActivity.this);
+                                                        Editor editor = preferences.edit();
+                                                        editor.putString(
+                                                                getString(R.string.oauth_token_key),
+                                                                null);
+                                                        editor.apply();
+                                                        FirebaseAuth.getInstance().signOut();
 
-                                                Intent logoutIntent =
-                                                        new Intent(IssueDetailsActivity.this,
+                                                        Intent logoutIntent = new Intent(
+                                                                IssueDetailsActivity.this,
                                                                 LoginActivity.class);
-                                                logoutIntent.addFlags(
-                                                        Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                dialog.dismiss();
-                                                IssueDetailsActivity.this
-                                                        .startActivity(logoutIntent);
+                                                        logoutIntent.addFlags(
+                                                                Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                        dialog.dismiss();
+                                                        IssueDetailsActivity.this
+                                                                .startActivity(logoutIntent);
 
-                                            }
+                                                    }
 
-                                        }).create().show();
+                                                }).create().show();
 
                             }
 
@@ -399,13 +419,13 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (error.getMessage().equals("Bad credentials")) {
+                                if (error.getMessage()
+                                        .equals(getString(R.string.bad_credentials_error))) {
 
                                     new AlertDialog.Builder(IssueDetailsActivity.this)
-                                            .setTitle("Login Credentials Expired").setMessage(
-                                            "Your login credentials have " +
-                                                    "expired, please log in " + "again")
-                                            .setPositiveButton("Ok",
+                                            .setTitle(R.string.login_credentials_expired_title)
+                                            .setMessage(R.string.expired_credentials_message)
+                                            .setPositiveButton(R.string.ok_button_text,
                                                     new DialogInterface.OnClickListener() {
 
                                                         @Override
@@ -417,7 +437,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                                             .getDefaultSharedPreferences(
                                                                                     IssueDetailsActivity.this);
                                                             Editor editor = preferences.edit();
-                                                            editor.putString("OAuth_token", null);
+                                                            editor.putString(getString(
+                                                                    R.string.oauth_token_key),
+                                                                    null);
                                                             editor.apply();
                                                             FirebaseAuth.getInstance().signOut();
 
@@ -483,8 +505,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
         Intent parentIntent = super.getSupportParentActivityIntent();
 
         Bundle extras = new Bundle();
-        extras.putString("repository", repositoryName);
-        extras.putParcelable("user", user);
+        extras.putString(IssueListActivity.REPOSITORY_KEY, repositoryName);
+        extras.putParcelable(IssueListActivity.USER_KEY, user);
         parentIntent.putExtras(extras);
 
         return parentIntent;
@@ -498,19 +520,19 @@ public class IssueDetailsActivity extends AppCompatActivity {
         MenuItem closeOpen = menu.findItem(R.id.action_close_open);
         MenuItem lockUnlock = menu.findItem(R.id.action_lock_unlock);
         MenuItem pinUnpin = menu.findItem(R.id.action_pin_unpin);
-        if (issue.getState().equals("closed")) {
+        if (issue.getState().equals(getString(R.string.issue_state_closed))) {
 
-            closeOpen.setTitle("Open Issue");
+            closeOpen.setTitle(R.string.open_issue_titile);
 
         }
         if (issue.isLocked()) {
 
-            lockUnlock.setTitle("Unlock Issue");
+            lockUnlock.setTitle(R.string.unlock_issue_title);
 
         }
         if (pinned) {
 
-            pinUnpin.setTitle("Unpin issue");
+            pinUnpin.setTitle(R.string.unpin_issue_title);
             pinUnpin.setIcon(R.drawable.ic_thumbtack_off_white_24dp);
 
         }
@@ -521,8 +543,12 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     private void isPinned() {
 
-        pinned = pinnedIssues.contains(issue.getNumber());
-        invalidateOptionsMenu();
+        if (pinnedIssues != null) {
+
+            pinned = pinnedIssues.contains(issue.getNumber());
+            invalidateOptionsMenu();
+
+        }
 
     }
 
@@ -535,9 +561,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
             case R.id.action_close_open:
                 swipeRefresh.setRefreshing(true);
                 IssueCloseOpenRequest closeOpenRequest = new IssueCloseOpenRequest();
-                if (issue.getState().equals("closed")) {
+                if (issue.getState().equals(getString(R.string.issue_state_closed))) {
 
-                    closeOpenRequest.setState("open");
+                    closeOpenRequest.setState(getString(R.string.issue_state_open));
                     service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
                             closeOpenRequest).enqueue(
 
@@ -551,8 +577,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                         issue = response.body();
                                         invalidateOptionsMenu();
                                         loadComments();
-                                        Toast.makeText(IssueDetailsActivity.this, "Issue Opened",
-                                                Toast.LENGTH_LONG).show();
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                R.string.issue_opened_toast, Toast.LENGTH_LONG)
+                                                .show();
 
                                     }
                                     else if (response.code() == 401) {
@@ -567,13 +594,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                             e.printStackTrace();
                                         }
 
-                                        if (error.getMessage().equals("Bad credentials")) {
+                                        if (error.getMessage().equals(getString(
+                                                R.string.bad_credentials_error))) {
 
                                             new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                    .setTitle("Login Credentials Expired")
-                                                    .setMessage("Your login credentials have " +
-                                                            "expired, please log in " + "again")
-                                                    .setPositiveButton("Ok",
+                                                    .setTitle(
+                                                            R.string.login_credentials_expired_title)
+                                                    .setMessage(
+                                                            R.string.expired_credentials_message)
+                                                    .setPositiveButton(R.string.ok_button_text,
                                                             new DialogInterface.OnClickListener() {
 
                                                                 @Override
@@ -587,7 +616,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                                                             IssueDetailsActivity.this);
                                                                     Editor editor =
                                                                             preferences.edit();
-                                                                    editor.putString("OAuth_token",
+                                                                    editor.putString(getString(
+                                                                            R.string.oauth_token_key),
                                                                             null);
                                                                     editor.apply();
                                                                     FirebaseAuth.getInstance()
@@ -641,7 +671,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 }
                 else {
 
-                    closeOpenRequest.setState("closed");
+                    closeOpenRequest.setState(getString(R.string.issue_state_closed));
                     service.openCloseIssue(repoNameSplit[0], repoNameSplit[1], issue.getNumber(),
                             closeOpenRequest).enqueue(
 
@@ -655,8 +685,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                         issue = response.body();
                                         invalidateOptionsMenu();
                                         loadComments();
-                                        Toast.makeText(IssueDetailsActivity.this, "Issue Closed",
-                                                Toast.LENGTH_LONG).show();
+                                        Toast.makeText(IssueDetailsActivity.this,
+                                                R.string.issue_closed_toast, Toast.LENGTH_LONG)
+                                                .show();
 
                                     }
                                     else if (response.code() == 401) {
@@ -671,13 +702,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                             e.printStackTrace();
                                         }
 
-                                        if (error.getMessage().equals("Bad credentials")) {
+                                        if (error.getMessage().equals(getString(
+                                                R.string.bad_credentials_error))) {
 
                                             new AlertDialog.Builder(IssueDetailsActivity.this)
-                                                    .setTitle("Login Credentials Expired")
-                                                    .setMessage("Your login credentials have " +
-                                                            "expired, please log in " + "again")
-                                                    .setPositiveButton("Ok",
+                                                    .setTitle(
+                                                            R.string.login_credentials_expired_title)
+                                                    .setMessage(
+                                                            R.string.expired_credentials_message)
+                                                    .setPositiveButton(R.string.ok_button_text,
                                                             new DialogInterface.OnClickListener() {
 
                                                                 @Override
@@ -691,7 +724,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                                                             IssueDetailsActivity.this);
                                                                     Editor editor =
                                                                             preferences.edit();
-                                                                    editor.putString("OAuth_token",
+                                                                    editor.putString(getString(
+                                                                            R.string.oauth_token_key),
                                                                             null);
                                                                     editor.apply();
                                                                     FirebaseAuth.getInstance()
@@ -763,7 +797,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                 refreshIssue();
 
                                                 Toast.makeText(IssueDetailsActivity.this,
-                                                        "Issue Unlocked", Toast.LENGTH_LONG).show();
+                                                        R.string.issue_unlocked_toast,
+                                                        Toast.LENGTH_LONG).show();
 
                                             }
                                             else if (response.code() == 401) {
@@ -779,16 +814,16 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                     e.printStackTrace();
                                                 }
 
-                                                if (error.getMessage().equals("Bad credentials")) {
+                                                if (error.getMessage().equals(getString(
+                                                        R.string.bad_credentials_error))) {
 
                                                     new AlertDialog.Builder(
-                                                            IssueDetailsActivity.this)
-                                                            .setTitle("Login Credentials Expired")
+                                                            IssueDetailsActivity.this).setTitle(
+                                                            R.string.login_credentials_expired_title)
                                                             .setMessage(
-                                                                    "Your login credentials have " +
-                                                                            "expired, please log " +
-                                                                            "in " + "again")
-                                                            .setPositiveButton("Ok",
+                                                                    R.string.expired_credentials_message)
+                                                            .setPositiveButton(
+                                                                    R.string.ok_button_text,
                                                                     new DialogInterface
                                                                             .OnClickListener() {
 
@@ -807,7 +842,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                                                     preferences
                                                                                             .edit();
                                                                             editor.putString(
-                                                                                    "OAuth_token",
+                                                                                    getString(
+                                                                                            R.string.oauth_token_key),
                                                                                     null);
                                                                             editor.apply();
                                                                             FirebaseAuth
@@ -877,7 +913,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
                                                 refreshIssue();
                                                 Toast.makeText(IssueDetailsActivity.this,
-                                                        "Issue Locked", Toast.LENGTH_LONG).show();
+                                                        R.string.issue_locked_toast,
+                                                        Toast.LENGTH_LONG).show();
 
                                             }
                                             else if (response.code() == 401) {
@@ -893,16 +930,16 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                     e.printStackTrace();
                                                 }
 
-                                                if (error.getMessage().equals("Bad credentials")) {
+                                                if (error.getMessage().equals(getString(
+                                                        R.string.bad_credentials_error))) {
 
                                                     new AlertDialog.Builder(
-                                                            IssueDetailsActivity.this)
-                                                            .setTitle("Login Credentials Expired")
+                                                            IssueDetailsActivity.this).setTitle(
+                                                            R.string.login_credentials_expired_title)
                                                             .setMessage(
-                                                                    "Your login credentials have " +
-                                                                            "expired, please log " +
-                                                                            "in " + "again")
-                                                            .setPositiveButton("Ok",
+                                                                    R.string.expired_credentials_message)
+                                                            .setPositiveButton(
+                                                                    R.string.ok_button_text,
                                                                     new DialogInterface
                                                                             .OnClickListener() {
 
@@ -921,7 +958,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                                                                     preferences
                                                                                             .edit();
                                                                             editor.putString(
-                                                                                    "OAuth_token",
+                                                                                    getString(
+                                                                                            R.string.oauth_token_key),
                                                                                     null);
                                                                             editor.apply();
                                                                             FirebaseAuth
@@ -1009,7 +1047,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                         }
                     };
                     reference.addListenerForSingleValueEvent(issueCheckListener);
-                    Toast.makeText(this, "Issue Unpinned", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.issue_unpinned_toast, Toast.LENGTH_LONG).show();
 
                 }
                 else {
@@ -1044,7 +1082,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
                         }
                     };
                     reference.addListenerForSingleValueEvent(issueCheckListener);
-                    Toast.makeText(this, "Issue pinned", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.issue_pinned_toast, Toast.LENGTH_LONG).show();
 
                 }
                 return true;
@@ -1114,11 +1152,11 @@ public class IssueDetailsActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
 
         super.onSaveInstanceState(outState);
-        outState.putParcelable("issue", issue);
-        outState.putParcelableArray("all_comments", allComments);
-        outState.putParcelableArrayList("pinned_issues_menu", pinnedIssueMenuItems);
-        outState.putIntegerArrayList("pinned_issues", pinnedIssues);
-        outState.putParcelable("user", user);
+        outState.putParcelable(ISSUE_KEY, issue);
+        outState.putParcelableArray(ALL_COMMENTS_KEY, allComments);
+        outState.putParcelableArrayList(PINNED_ISSUES_MENU_KEY, pinnedIssueMenuItems);
+        outState.putIntegerArrayList(PINNED_ISSUES_KEY, pinnedIssues);
+        outState.putParcelable(USER_KEY, user);
 
     }
 }

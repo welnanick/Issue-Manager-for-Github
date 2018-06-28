@@ -23,26 +23,35 @@ public class ServiceGenerator {
     public static GitHubService createService(String username, String password) {
 
         if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(password)) {
+
             String authToken = Credentials.basic(username, password);
             return createService(authToken);
+
         }
 
         return createService(null);
+
     }
 
     public static GitHubService createService(final String authToken) {
 
         if (!TextUtils.isEmpty(authToken)) {
+
             AuthenticationInterceptor interceptor = new AuthenticationInterceptor(authToken);
 
             if (!httpClient.interceptors().contains(interceptor)) {
+
                 httpClient.addInterceptor(interceptor);
 
                 builder.client(httpClient.build());
                 retrofit = builder.build();
+
             }
+
         }
 
         return retrofit.create(GitHubService.class);
+
     }
+
 }

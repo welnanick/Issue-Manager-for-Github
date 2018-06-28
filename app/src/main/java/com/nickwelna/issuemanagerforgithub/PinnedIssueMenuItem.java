@@ -34,6 +34,7 @@ class PinnedIssueMenuItem implements Parcelable {
     public int describeContents() {
 
         return 0;
+
     }
 
     @Override
@@ -42,6 +43,7 @@ class PinnedIssueMenuItem implements Parcelable {
         dest.writeString(this.text);
         dest.writeInt(this.number);
         dest.writeInt(this.viewType);
+
     }
 
     protected PinnedIssueMenuItem(Parcel in) {
@@ -49,6 +51,7 @@ class PinnedIssueMenuItem implements Parcelable {
         this.text = in.readString();
         this.number = in.readInt();
         this.viewType = in.readInt();
+
     }
 
     public static final Creator<PinnedIssueMenuItem> CREATOR = new Creator<PinnedIssueMenuItem>() {
@@ -57,12 +60,16 @@ class PinnedIssueMenuItem implements Parcelable {
         public PinnedIssueMenuItem createFromParcel(Parcel source) {
 
             return new PinnedIssueMenuItem(source);
+
         }
 
         @Override
         public PinnedIssueMenuItem[] newArray(int size) {
 
             return new PinnedIssueMenuItem[size];
+
         }
+
     };
+
 }

@@ -1,0 +1,46 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorPrimary"
+    android:padding="@dimen/widget_margin">
+
+    <ImageView
+        android:id="@+id/refresh"
+        android:layout_width="@dimen/square_dimension_40"
+        android:layout_height="@dimen/square_dimension_40"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/ic_refresh_white_24dp"
+        android:contentDescription="@string/widget_content_refresh_button_content_description" />
+
+    <TextView
+        android:id="@+id/appwidget_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_margin="@dimen/spacing_normal"
+        android:contentDescription="@string/appwidget_text"
+        android:text="@string/appwidget_text"
+        android:textColor="#ffffff"
+        android:textSize="24sp" />
+
+    <ListView
+        android:id="@+id/widget_list_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/appwidget_text"
+        android:background="@color/white" />
+
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/appwidget_text"
+        android:layout_margin="@dimen/spacing_normal"
+        android:layout_toStartOf="@id/refresh"
+        android:text="@string/widget_empty_text"
+        android:textColor="@color/white"
+        android:textSize="@dimen/empty_text_size" />
+
+</RelativeLayout>

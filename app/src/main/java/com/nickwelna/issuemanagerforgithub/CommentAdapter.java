@@ -8,7 +8,6 @@ import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.widget.RecyclerView;
 import android.text.format.DateUtils;
@@ -104,7 +103,7 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
         @BindView(R.id.username)
         TextView username;
-        @BindView(R.id.howlong)
+        @BindView(R.id.how_long)
         TextView howLong;
         @BindView(R.id.body)
         TextView body;
@@ -135,6 +134,7 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
             body.setText(comment.getBody());
             Glide.with(itemView).load(comment.getUser().getAvatar_url())
                     .apply(RequestOptions.circleCropTransform()).into(avatar);
+            avatar.setContentDescription(comment.getUser().getLogin() + "'s avatar image");
 
             if (!comment.getUser().getLogin().equals(usernameString)) {
 
@@ -150,21 +150,25 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
                         Intent addCommentIntent = new Intent(context, EditCommentActivity.class);
                         Bundle extras = new Bundle();
-                        extras.putString("action", "edit");
-                        extras.putString("repo_name", repositoryName);
+                        extras.putString(EditCommentActivity.ACTION_KEY,
+                                EditCommentActivity.ACTION_EDIT);
+                        extras.putString(EditCommentActivity.REPO_NAME_KEY, repositoryName);
                         if (comment instanceof Issue) {
 
-                            extras.putString("type", "issue");
-                            extras.putInt("issue_number", ((Issue) comment).getNumber());
+                            extras.putString(EditCommentActivity.TYPE_KEY,
+                                    EditCommentActivity.TYPE_ISSUE);
+                            extras.putInt(EditCommentActivity.ISSUE_NUMBER_KEY,
+                                    ((Issue) comment).getNumber());
 
                         }
                         else {
 
-                            extras.putString("type", "comment");
-                            extras.putInt("comment_id", comment.getId());
+                            extras.putString(EditCommentActivity.TYPE_KEY,
+                                    EditCommentActivity.TYPE_COMMENT);
+                            extras.putInt(EditCommentActivity.COMMENT_ID_KEY, comment.getId());
 
                         }
-                        extras.putParcelable("comment", comment);
+                        extras.putParcelable(EditCommentActivity.COMMENT_KEY, comment);
                         addCommentIntent.putExtras(extras);
                         context.startActivity(addCommentIntent);
 
@@ -178,10 +182,11 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                         @Override
                         public boolean onLongClick(View v) {
 
-                            new AlertDialog.Builder(context).setTitle("Delete Comment?")
+                            new Builder(context).setTitle(R.string.delete_comment_title)
                                     .setPositiveButton(
 
-                                            "Yes", new DialogInterface.OnClickListener() {
+                                            R.string.yes_button_text,
+                                            new DialogInterface.OnClickListener() {
 
                                                 @Override
                                                 public void onClick(final DialogInterface dialog,
@@ -191,8 +196,10 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                                                             PreferenceManager
                                                                     .getDefaultSharedPreferences(
                                                                             context);
-                                                    String token = preferences
-                                                            .getString("OAuth_token", null);
+                                                    String token = preferences.getString(
+                                                            context.getString(
+                                                                    R.string.oauth_token_key),
+                                                            null);
 
                                                     GitHubService service =
                                                             ServiceGenerator.createService(token);
@@ -231,18 +238,18 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
                                                                                 if (error
                                                                                         .getMessage()
-                                                                                        .equals("Bad credentials")) {
+                                                                                        .equals(R
+                                                                                                .string.bad_credentials_error)) {
 
                                                                                     new Builder(
                                                                                             context)
                                                                                             .setTitle(
-                                                                                                    "Login Credentials Expired")
+                                                                                                    R.string.login_credentials_expired_title)
                                                                                             .setMessage(
-                                                                                                    "Your login credentials have " +
-                                                                                                            "expired, please log in " +
-                                                                                                            "again")
+                                                                                                    R.string.expired_credentials_message)
                                                                                             .setPositiveButton(
-                                                                                                    "Ok",
+                                                                                                    context.getString(
+                                                                                                            R.string.ok_button_text),
                                                                                                     new DialogInterface.OnClickListener() {
 
                                                                                                         @Override
@@ -260,7 +267,8 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
                                                                                                                     preferences
                                                                                                                             .edit();
                                                                                                             editor.putString(
-                                                                                                                    "OAuth_token",
+                                                                                                                    context.getString(
+                                                                                                                            R.string.oauth_token_key),
                                                                                                                     null);
                                                                                                             editor.apply();
                                                                                                             FirebaseAuth
@@ -293,7 +301,7 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
                                                                                 Toast.makeText(
                                                                                         context,
-                                                                                        "Comment Deleted",
+                                                                                        R.string.comment_deleted_toast,
 
                                                                                         Toast.LENGTH_LONG)
                                                                                         .show();
@@ -314,8 +322,8 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
 
                                                 }
 
-                                            })
-                                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                                            }).setNegativeButton(R.string.no_button_text,
+                                    new DialogInterface.OnClickListener() {
 
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
@@ -337,8 +345,8 @@ class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
         private String getHowLong(IssueCommentCommon comment) {
 
             String datePosted = comment.getCreatedAt();
-            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
-            format.setTimeZone(TimeZone.getTimeZone("UTC"));
+            SimpleDateFormat format = new SimpleDateFormat(context.getString(R.string.date_format));
+            format.setTimeZone(TimeZone.getTimeZone(context.getString(R.string.utc_timezonr)));
             Date date = null;
             try {
                 date = format.parse(datePosted);

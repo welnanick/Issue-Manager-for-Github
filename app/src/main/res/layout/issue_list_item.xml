@@ -4,23 +4,22 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:foreground="?selectableItemBackground"
-    tools:layout_editor_absoluteY="81dp">
+    android:foreground="?selectableItemBackground">
 
     <TextView
         android:id="@+id/issue_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginEnd="@dimen/spacing_normal"
+        android:layout_marginStart="@dimen/spacing_normal"
+        android:layout_marginTop="@dimen/spacing_normal"
         android:ellipsize="end"
         android:maxLines="1"
         android:textAppearance="@style/TextAppearance.AppCompat.Headline"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Use butterknife with Android Gradle Plugin version 3.1.+ cannot compile ~" />
+        tools:text="@string/test_issue_name" />
 
     <TextView
         android:id="@+id/issue_number"
@@ -29,37 +28,36 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"
         app:layout_constraintStart_toStartOf="@+id/issue_title"
         app:layout_constraintTop_toBottomOf="@+id/issue_title"
-        tools:text="#200" />
+        tools:text="@string/test_issue_number" />
 
     <TextView
         android:id="@+id/issue_comments"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="6 Comments"
+        android:layout_marginStart="@dimen/spacing_normal"
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"
         app:layout_constraintStart_toEndOf="@+id/issue_number"
-        app:layout_constraintTop_toTopOf="@+id/issue_number" />
+        app:layout_constraintTop_toTopOf="@+id/issue_number"
+        tools:text="@string/test_issue_comment_text" />
 
     <TextView
         android:id="@+id/issue_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="@dimen/spacing_normal"
         android:textAppearance="@style/TextAppearance.AppCompat.Subhead"
         android:textColor="@color/material_red"
         app:layout_constraintStart_toEndOf="@+id/issue_comments"
         app:layout_constraintTop_toTopOf="@+id/issue_number"
-        tools:text="Closed" />
+        tools:text="@string/test_issue_state_text" />
 
     <View
         android:id="@+id/view"
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/spacing_normal"
         android:background="?dividerHorizontal"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/issue_number" />
 

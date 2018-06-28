@@ -99,8 +99,8 @@ public class RepositoryAdapter extends RecyclerView.Adapter<RepositoryViewHolder
 
                     Intent viewRepositoryIntent = new Intent(context, IssueListActivity.class);
                     Bundle extras = new Bundle();
-                    extras.putString("repository", repository.getFull_name());
-                    extras.putParcelable("user", user);
+                    extras.putString(IssueListActivity.REPOSITORY_KEY, repository.getFull_name());
+                    extras.putParcelable(IssueListActivity.USER_KEY, user);
                     viewRepositoryIntent.putExtras(extras);
                     context.startActivity(viewRepositoryIntent);
 

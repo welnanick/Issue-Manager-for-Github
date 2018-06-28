@@ -10,9 +10,9 @@
         android:id="@+id/title_input_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
+        android:layout_marginTop="@dimen/spacing_large"
         app:errorEnabled="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -27,8 +27,8 @@
             android:inputType="text"
             android:lines="1"
             android:maxLines="1"
-            android:paddingEnd="12dp"
-            android:paddingStart="12dp" />
+            android:paddingEnd="@dimen/material_input_spacing"
+            android:paddingStart="@dimen/material_input_spacing" />
 
     </android.support.design.widget.TextInputLayout>
 
@@ -36,9 +36,9 @@
         android:id="@+id/textInputLayout4"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
+        android:layout_marginTop="@dimen/spacing_large"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -47,13 +47,13 @@
         <android.support.design.widget.TextInputEditText
             android:id="@+id/body_edit_text"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="@dimen/comment_body_input_height"
             android:gravity="top"
             android:hint="@string/body_hint"
             android:inputType="textMultiLine"
             android:overScrollMode="always"
-            android:paddingEnd="12dp"
-            android:paddingStart="12dp"
+            android:paddingEnd="@dimen/material_input_spacing"
+            android:paddingStart="@dimen/material_input_spacing"
             android:scrollbarStyle="insideInset"
             android:scrollbars="vertical" />
 
@@ -63,11 +63,11 @@
         android:id="@+id/submit_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginEnd="@dimen/spacing_normal"
+        android:layout_marginTop="@dimen/spacing_normal"
         android:backgroundTint="@color/colorPrimary"
-        android:elevation="2dp"
-        android:text="Submit"
+        android:elevation="@dimen/button_elevation"
+        android:text="@string/submit_button_text"
         android:textColor="@color/white"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textInputLayout4" />

@@ -11,7 +11,6 @@ import com.nickwelna.issuemanagerforgithub.models.IssueCloseOpenRequest;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -38,7 +37,8 @@ public interface GitHubService {
     Call<SearchResult> searchRepositories(@Query("q") String search);
 
     @GET("/repos/{owner}/{repository}/issues")
-    Call<ArrayList<Issue>> getIssues(@Path("owner") String owner, @Path("repository") String repository,
+    Call<ArrayList<Issue>> getIssues(@Path("owner") String owner,
+                                     @Path("repository") String repository,
                                      @Query("state") String state);
 
     @GET("/repos/{owner}/{repository}/issues/{issue}")

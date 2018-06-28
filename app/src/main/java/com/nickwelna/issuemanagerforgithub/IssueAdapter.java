@@ -101,22 +101,22 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
         void bind(final Issue issue) {
 
             issueTitle.setText(issue.getTitle());
-            issueNumber.setText('#' + String.valueOf(issue.getNumber()));
+            issueNumber.setText(String.format("%s%s", '#', String.valueOf(issue.getNumber())));
             if (issue.getComments() != 1) {
 
-                issueComments.setText(issue.getComments() + " comments");
+                issueComments.setText(String.format("%d comments", issue.getComments()));
 
             }
             else {
 
-                issueComments.setText("1 comment");
+                issueComments.setText(R.string.one_comment_text);
 
             }
             String issueState = issue.getState();
             String issueStateCap =
                     issueState.substring(0, 1).toUpperCase() + issueState.substring(1);
             issueStatus.setText(issueStateCap);
-            if (issueState.equals("open")) {
+            if (issueState.equals(context.getString(R.string.open_state_text))) {
 
                 issueStatus.setTextColor(context.getResources().getColor(R.color.material_green));
 
@@ -134,9 +134,9 @@ public class IssueAdapter extends RecyclerView.Adapter<IssueViewHolder> {
 
                     Intent viewIssueDetailsIntent = new Intent(context, IssueDetailsActivity.class);
                     Bundle extras = new Bundle();
-                    extras.putParcelable("Issue", issue);
-                    extras.putString("repo-name", repositoryName);
-                    extras.putParcelable("user", user);
+                    extras.putParcelable(IssueDetailsActivity.ISSUE_KEY, issue);
+                    extras.putString(IssueDetailsActivity.REPO_NAME_KEY, repositoryName);
+                    extras.putParcelable(IssueDetailsActivity.USER_KEY, user);
                     viewIssueDetailsIntent.putExtras(extras);
                     context.startActivity(viewIssueDetailsIntent);
 

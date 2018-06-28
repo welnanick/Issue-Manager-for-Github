@@ -15,4 +15,24 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="DividerStyle">
+        <item name="android:layout_marginTop">@dimen/spacing_normal</item>
+        <item name="android:background">?dividerHorizontal</item>
+    </style>
+
+    <style name="RepositoryListStyle">
+        <item name="android:layout_marginEnd">@dimen/spacing_normal</item>
+        <item name="android:layout_marginStart">@dimen/spacing_normal</item>
+        <item name="android:layout_marginTop">@dimen/spacing_normal</item>
+        <item name="android:textAppearance">@style/TextAppearance.AppCompat.Headline</item>
+    </style>
+
+    <style name="MaterialCardStyle">
+        <item name="android:layout_marginStart">@dimen/material_card_spacing</item>
+        <item name="android:layout_marginEnd">@dimen/material_card_spacing</item>
+        <item name="android:layout_marginTop">@dimen/material_card_spacing</item>
+        <item name="android:elevation">@dimen/card_elevation</item>
+
+    </style>
+
 </resources>

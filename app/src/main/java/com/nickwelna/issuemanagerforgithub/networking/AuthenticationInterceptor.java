@@ -13,6 +13,7 @@ public class AuthenticationInterceptor implements Interceptor {
     public AuthenticationInterceptor(String token) {
 
         this.authToken = token;
+
     }
 
     @Override
@@ -32,5 +33,7 @@ public class AuthenticationInterceptor implements Interceptor {
         }
         Request request = builder.build();
         return chain.proceed(request);
+
     }
+
 }

@@ -17,7 +17,6 @@ public class Issue extends IssueCommentCommon {
     GithubUser[] assignees;
     Milestone milestone;
     int comments;
-    //TODO: Use dates for these, not strings
     String closed_at;
     PullRequest pull_request;
 

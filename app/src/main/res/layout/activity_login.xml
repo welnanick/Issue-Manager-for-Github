@@ -10,10 +10,10 @@
         android:id="@+id/header"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="16dp"
-        android:text="Login to Github"
+        android:layout_marginEnd="@dimen/spacing_normal"
+        android:layout_marginStart="@dimen/spacing_normal"
+        android:layout_marginTop="@dimen/spacing_large"
+        android:text="@string/login_to_github_header_text"
         android:textAppearance="@style/TextAppearance.AppCompat.Headline"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -23,16 +23,12 @@
         android:id="@+id/username_input_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/password_input_layout"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
+        android:layout_marginTop="@dimen/spacing_large"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/header"
-        app:layout_constraintVertical_bias="0.0"
-        app:layout_constraintVertical_chainStyle="packed">
+        app:layout_constraintTop_toBottomOf="@+id/header">
 
         <android.support.design.widget.TextInputEditText
             android:id="@+id/username_edit_text"
@@ -43,8 +39,8 @@
             android:inputType="text"
             android:lines="1"
             android:maxLines="1"
-            android:paddingEnd="12dp"
-            android:paddingStart="12dp" />
+            android:paddingEnd="@dimen/material_input_spacing"
+            android:paddingStart="@dimen/material_input_spacing" />
 
     </android.support.design.widget.TextInputLayout>
 
@@ -52,11 +48,9 @@
         android:id="@+id/password_input_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/two_factor_input_layout"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/username_input_layout">
 
@@ -69,8 +63,8 @@
             android:inputType="textPassword"
             android:lines="1"
             android:maxLines="1"
-            android:paddingEnd="12dp"
-            android:paddingStart="12dp" />
+            android:paddingEnd="@dimen/material_input_spacing"
+            android:paddingStart="@dimen/material_input_spacing" />
 
     </android.support.design.widget.TextInputLayout>
 
@@ -78,12 +72,10 @@
         android:id="@+id/two_factor_input_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/password_input_layout">
 
@@ -96,36 +88,36 @@
             android:inputType="text"
             android:lines="1"
             android:maxLines="1"
-            android:paddingEnd="12dp"
-            android:paddingStart="12dp" />
+            android:paddingEnd="@dimen/material_input_spacing"
+            android:paddingStart="@dimen/material_input_spacing" />
 
     </android.support.design.widget.TextInputLayout>
-
-    <TextView
-        android:id="@+id/authorization_note"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:text='Note: This will add a third-party OAuth application called "Issue Manager for Github" to your account with the "public_repo" scope'
-        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-        android:textColor="@android:color/tertiary_text_light"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/login_button" />
 
     <Button
         android:id="@+id/login_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="@dimen/spacing_large"
         android:backgroundTint="@color/colorPrimary"
-        android:text="Login"
+        android:contentDescription="@string/login_button_content_description"
+        android:text="@string/login_button_text"
         android:textColor="@android:color/primary_text_dark"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/two_factor_input_layout" />
+
+    <TextView
+        android:id="@+id/authorization_note"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_large"
+        android:layout_marginStart="@dimen/spacing_large"
+        android:layout_marginTop="@dimen/spacing_normal"
+        android:text="@string/app_authorization_note"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+        android:textColor="@android:color/tertiary_text_light"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/login_button" />
 
     <android.support.constraint.Group
         android:id="@+id/group"
@@ -136,12 +128,8 @@
     <ProgressBar
         android:id="@+id/progress_bar"
         style="@style/Widget.AppCompat.ProgressBar"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_width="@dimen/square_dimensions_50"
+        android:layout_height="@dimen/square_dimensions_50"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

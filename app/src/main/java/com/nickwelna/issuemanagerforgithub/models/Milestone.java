@@ -17,7 +17,6 @@ class Milestone implements Parcelable {
     GithubUser creator;
     int open_issues;
     int closed_issues;
-    //TODO: Use dates for these instead of strings
     String created_at;
     String updated_at;
     String closed_at;

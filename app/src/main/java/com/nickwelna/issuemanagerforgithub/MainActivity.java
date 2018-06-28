@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
     SwipeRefreshLayout swipeRefresh;
     RepositoryAdapter repositoryAdapter;
     ArrayList<Repository> visibleRepositories;
-    String currentList = "pinned";
+    String currentList = CURRENT_LIST_PINNED;
     boolean refreshRequested = false;
     SharedPreferences preferences;
     GitHubService service;
@@ -85,6 +85,13 @@ public class MainActivity extends AppCompatActivity {
     boolean loadSearch = false;
     String searchTextString;
     boolean rotated;
+    public static final String CURRENT_LIST_PINNED = "pinned";
+    public static final String CURRENT_LIST_SEARCH = "search";
+    public static final String USER_KEY = "user";
+    public static final String PINNED_ISSUES_KEY = "pinned_issues";
+    public static final String VISIBLE_REPOSITORIES_KEY = "visible_repositories";
+    public static final String LOAD_SEARCH_KEY = "load_search";
+    public static final String SEARCH_TEXT_KEY = "search_text";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,11 +104,12 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState != null) {
 
-            user = savedInstanceState.getParcelable("user");
-            pinnedIssueMenuItems = savedInstanceState.getParcelableArrayList("pinned_issues");
-            visibleRepositories = savedInstanceState.getParcelableArrayList("visible_repositories");
-            loadSearch = savedInstanceState.getBoolean("load_search");
-            searchTextString = savedInstanceState.getString("search_text");
+            user = savedInstanceState.getParcelable(USER_KEY);
+            pinnedIssueMenuItems = savedInstanceState.getParcelableArrayList(PINNED_ISSUES_KEY);
+            visibleRepositories =
+                    savedInstanceState.getParcelableArrayList(VISIBLE_REPOSITORIES_KEY);
+            loadSearch = savedInstanceState.getBoolean(LOAD_SEARCH_KEY);
+            searchTextString = savedInstanceState.getString(SEARCH_TEXT_KEY);
             rotated = true;
 
         }
@@ -133,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
         repositoryAdapter = new RepositoryAdapter();
         repositoryRecyclerView.setAdapter(repositoryAdapter);
 
-        String token = preferences.getString("OAuth_token", null);
+        String token = preferences.getString(getString(R.string.oauth_token_key), null);
 
         service = ServiceGenerator.createService(token);
         if (user == null) {
@@ -154,33 +162,40 @@ public class MainActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
 
-                        if (error.getMessage().equals("Bad credentials")) {
+                        if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
 
                             new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle("Login " + "Credentials Expired").setMessage(
-                                    "Your login credentials have expired, please log in again")
-                                    .setPositiveButton("Ok", new OnClickListener() {
+                                    .setTitle(R.string.login_credentials_expired_title)
+                                    .setPositiveButton(R.string.ok_button_text,
+                                            new OnClickListener() {
 
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
+                                                @Override
+                                                public void onClick(DialogInterface dialog,
+                                                                    int which) {
 
-                                            SharedPreferences preferences = PreferenceManager
-                                                    .getDefaultSharedPreferences(MainActivity.this);
-                                            Editor editor = preferences.edit();
-                                            editor.putString("OAuth_token", null);
-                                            editor.apply();
-                                            FirebaseAuth.getInstance().signOut();
+                                                    SharedPreferences preferences =
+                                                            PreferenceManager
+                                                                    .getDefaultSharedPreferences(
+                                                                            MainActivity.this);
+                                                    Editor editor = preferences.edit();
+                                                    editor.putString(
+                                                            getString(R.string.oauth_token_key),
+                                                            null);
+                                                    editor.apply();
+                                                    FirebaseAuth.getInstance().signOut();
 
-                                            Intent logoutIntent = new Intent(MainActivity.this,
-                                                    LoginActivity.class);
-                                            logoutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                            dialog.dismiss();
-                                            MainActivity.this.startActivity(logoutIntent);
+                                                    Intent logoutIntent =
+                                                            new Intent(MainActivity.this,
+                                                                    LoginActivity.class);
+                                                    logoutIntent.addFlags(
+                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                    dialog.dismiss();
+                                                    MainActivity.this.startActivity(logoutIntent);
 
-                                        }
+                                                }
 
-                                    }).create().show();
+                                            }).create().show();
 
                         }
 
@@ -214,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void refresh() {
 
-        if (currentList.equals("pinned")) {
+        if (currentList.equals(CURRENT_LIST_PINNED)) {
 
             refreshRequested = true;
             loadPinnedRepositories();
@@ -402,7 +417,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onMenuItemActionCollapse(MenuItem item) {
 
-                currentList = "pinned";
+                currentList = CURRENT_LIST_PINNED;
                 visibleRepositories = null;
                 loadPinnedRepositories();
                 return true;
@@ -412,7 +427,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
 
-                currentList = "search";
+                currentList = CURRENT_LIST_SEARCH;
                 return true;
 
             }
@@ -481,39 +496,43 @@ public class MainActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
-                                if (error.getMessage().equals("Bad credentials")) {
+                                if (error.getMessage()
+                                        .equals(getString(R.string.bad_credentials_error))) {
 
                                     new AlertDialog.Builder(MainActivity.this)
-                                            .setTitle("Login " + "Credentials Expired").setMessage(
-                                            "Your login credentials have expired, please log in " +
-                                                    "again")
-                                            .setPositiveButton("Ok", new OnClickListener() {
+                                            .setTitle(R.string.login_credentials_expired_title)
+                                            .setPositiveButton(R.string.ok_button_text,
+                                                    new OnClickListener() {
 
-                                                @Override
-                                                public void onClick(DialogInterface dialog,
-                                                                    int which) {
+                                                        @Override
+                                                        public void onClick(DialogInterface dialog,
+                                                                            int which) {
 
-                                                    SharedPreferences preferences =
-                                                            PreferenceManager
-                                                                    .getDefaultSharedPreferences(
-                                                                            MainActivity.this);
-                                                    Editor editor = preferences.edit();
-                                                    editor.putString("OAuth_token", null);
-                                                    editor.apply();
-                                                    FirebaseAuth.getInstance().signOut();
+                                                            SharedPreferences preferences =
+                                                                    PreferenceManager
+                                                                            .getDefaultSharedPreferences(
+                                                                                    MainActivity
+                                                                                            .this);
+                                                            Editor editor = preferences.edit();
+                                                            editor.putString(getString(
+                                                                    R.string.oauth_token_key),
+                                                                    null);
+                                                            editor.apply();
+                                                            FirebaseAuth.getInstance().signOut();
 
-                                                    Intent logoutIntent =
-                                                            new Intent(MainActivity.this,
-                                                                    LoginActivity.class);
-                                                    logoutIntent.addFlags(
-                                                            Intent.FLAG_ACTIVITY_NEW_TASK |
-                                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                    dialog.dismiss();
-                                                    MainActivity.this.startActivity(logoutIntent);
+                                                            Intent logoutIntent =
+                                                                    new Intent(MainActivity.this,
+                                                                            LoginActivity.class);
+                                                            logoutIntent.addFlags(
+                                                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                            dialog.dismiss();
+                                                            MainActivity.this
+                                                                    .startActivity(logoutIntent);
 
-                                                }
+                                                        }
 
-                                            }).create().show();
+                                                    }).create().show();
 
                                 }
 
@@ -572,15 +591,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
 
         super.onSaveInstanceState(outState);
-        outState.putParcelable("user", user);
-        outState.putParcelableArrayList("pinned_issues", pinnedIssueMenuItems);
-        outState.putParcelableArrayList("visible_repositories", visibleRepositories);
-        if (searchText != null && currentList.equals("search")) {
-            outState.putBoolean("load_search", true);
-            outState.putString("search_text", searchText.getText().toString());
+        outState.putParcelable(USER_KEY, user);
+        outState.putParcelableArrayList(PINNED_ISSUES_KEY, pinnedIssueMenuItems);
+        outState.putParcelableArrayList(VISIBLE_REPOSITORIES_KEY, visibleRepositories);
+        if (searchText != null && currentList.equals(CURRENT_LIST_SEARCH)) {
+            outState.putBoolean(LOAD_SEARCH_KEY, true);
+            outState.putString(SEARCH_TEXT_KEY, searchText.getText().toString());
         }
         else {
-            outState.putBoolean("load_search", false);
+            outState.putBoolean(LOAD_SEARCH_KEY, false);
         }
 
     }
