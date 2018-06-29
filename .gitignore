@@ -8,3 +8,5 @@
 .externalNativeBuild
 /app/release/
 /app/debug/
+keystore.properties
+/app/google-services.json
