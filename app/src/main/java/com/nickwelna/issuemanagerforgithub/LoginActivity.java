@@ -5,11 +5,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.constraint.Group;
-import android.support.design.widget.TextInputEditText;
-import android.support.design.widget.TextInputLayout;
-import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -23,6 +18,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
@@ -38,6 +35,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.Group;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import retrofit2.Call;
@@ -60,7 +60,7 @@ public class LoginActivity extends AppCompatActivity {
     Group group;
     @BindView(R.id.progress_bar)
     ProgressBar progressBar;
-    private FirebaseAuth mAuth;
+    private FirebaseAuth auth;
     public static final String TWO_FACTOR_VISIBLE_KEY = "two_factor_visible";
 
     @Override
@@ -131,7 +131,7 @@ public class LoginActivity extends AppCompatActivity {
             }
 
         });
-        mAuth = FirebaseAuth.getInstance();
+        auth = FirebaseAuth.getInstance();
 
     }
 
@@ -301,7 +301,7 @@ public class LoginActivity extends AppCompatActivity {
         editor.apply();
 
         AuthCredential credential = GithubAuthProvider.getCredential(body.getToken());
-        mAuth.signInWithCredential(credential)
+        auth.signInWithCredential(credential)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 
                     @Override

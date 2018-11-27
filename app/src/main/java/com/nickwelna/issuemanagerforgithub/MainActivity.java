@@ -10,19 +10,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.NavigationView;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v4.widget.SwipeRefreshLayout.OnRefreshListener;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SearchView;
-import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -34,6 +21,7 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
+import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -51,6 +39,18 @@ import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import retrofit2.Call;
@@ -214,14 +214,12 @@ public class MainActivity extends AppCompatActivity {
 
                     user = response.body();
                     repositoryAdapter.updateUser(user);
-                    if (firstRun || refreshRequested) {
-                        loadPinnedIssues(user);
-                        if (currentList.equals(CURRENT_LIST_PINNED)) {
-                            loadPinnedRepositories();
-                        }
-                        else {
-                            searchRepositories();
-                        }
+                    loadPinnedIssues(user);
+                    if (currentList.equals(CURRENT_LIST_PINNED)) {
+                        loadPinnedRepositories();
+                    }
+                    else {
+                        searchRepositories();
                     }
 
                 }
@@ -270,7 +268,8 @@ public class MainActivity extends AppCompatActivity {
                                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                                     visibleRepositories = new ArrayList<>();
-                                    for (DataSnapshot pinnedRepoSnapshot : dataSnapshot.getChildren()) {
+                                    for (DataSnapshot pinnedRepoSnapshot : dataSnapshot
+                                            .getChildren()) {
 
                                         Repository temp = new Repository();
                                         temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
@@ -286,8 +285,8 @@ public class MainActivity extends AppCompatActivity {
                                 public void onCancelled(@NonNull DatabaseError databaseError) {
 
                                     swipeRefresh.setRefreshing(false);
-                                    Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
-                                            .show();
+                                    Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                                            Toast.LENGTH_LONG).show();
 
                                 }
                             };
@@ -306,8 +305,8 @@ public class MainActivity extends AppCompatActivity {
                     else {
 
                         swipeRefresh.setRefreshing(false);
-                        Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
-                                .show();
+                        Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                                Toast.LENGTH_LONG).show();
 
                     }
 
@@ -317,8 +316,8 @@ public class MainActivity extends AppCompatActivity {
                 public void onCancelled(DatabaseError error) {
 
                     swipeRefresh.setRefreshing(false);
-                    Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
-                            .show();
+                    Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                            Toast.LENGTH_LONG).show();
 
                 }
 
@@ -389,8 +388,8 @@ public class MainActivity extends AppCompatActivity {
                         public void onCancelled(@NonNull DatabaseError databaseError) {
 
                             swipeRefresh.setRefreshing(false);
-                            Toast.makeText(MainActivity.this, R.string.network_error_toast, Toast.LENGTH_LONG)
-                                    .show();
+                            Toast.makeText(MainActivity.this, R.string.network_error_toast,
+                                    Toast.LENGTH_LONG).show();
 
                         }
                     };
@@ -454,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
         searchView.setQueryHint(getString(R.string.search_query_hint));
 
         //Access the Edit Text in the searchview
-        searchText = searchView.findViewById(android.support.v7.appcompat.R.id.search_src_text);
+        searchText = searchView.findViewById(androidx.appcompat.R.id.search_src_text);
 
         //make it so it performs our github search call when the user hits the search button on
         // the keyboard

@@ -7,11 +7,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AlertDialog.Builder;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -34,6 +29,10 @@ import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import java.io.IOException;
 import java.util.List;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import retrofit2.Call;
@@ -139,7 +138,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
             this.itemView = itemView;
             this.viewType = viewType;
             this.context = context;
-            logoutAlert = new Builder(context).setTitle(R.string.Logout_title)
+            logoutAlert = new AlertDialog.Builder(context).setTitle(R.string.Logout_title)
                     .setNegativeButton(R.string.no_button_text,
                             new DialogInterface.OnClickListener() {
 
@@ -247,7 +246,7 @@ class PinnedIssueAdapter extends RecyclerView.Adapter<PinnedIssueViewHolder> {
                                         if (error.getMessage().equals(context
                                                 .getString(R.string.bad_credentials_error))) {
 
-                                            new Builder(context).setTitle(
+                                            new AlertDialog.Builder(context).setTitle(
                                                     R.string.login_credentials_expired_title)
                                                     .setMessage(
                                                             R.string.expired_credentials_message)

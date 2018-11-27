@@ -9,7 +9,7 @@
     <string name="username_hint">Username</string>
     <string name="password_hint">Password</string>
     <string name="two_factor_hint">Two Factor Authentication Code</string>
-    <string name="main_activity_name">Pinned Repositories</string>
+    <string name="pinned_repositories_title">Pinned Repositories</string>
     <string name="appwidget_text">Pinned Repositories</string>
     <string name="test_repository_name">JakeWharton/butterknife</string>
     <string name="widget_empty_text">Refresh to see Repositories</string>
@@ -88,4 +88,8 @@
     </plurals>
     <string name="issue_number_format">#%d</string>
     <string name="network_error_toast">Network error, check network and try again</string>
+    <string name="helper_text">* Required</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

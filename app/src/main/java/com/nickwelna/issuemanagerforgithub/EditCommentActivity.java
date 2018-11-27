@@ -6,10 +6,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.TextInputEditText;
-import android.support.design.widget.TextInputLayout;
-import android.support.v7.app.AlertDialog.Builder;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -18,6 +14,8 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.gson.Gson;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
@@ -30,6 +28,8 @@ import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 
 import java.io.IOException;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import retrofit2.Call;
@@ -208,8 +208,9 @@ public class EditCommentActivity extends AppCompatActivity {
                                             if (error.getMessage().equals(getString(
                                                     R.string.bad_credentials_error))) {
 
-                                                new Builder(EditCommentActivity.this).setTitle(
-                                                        R.string.login_credentials_expired_title)
+                                                new AlertDialog.Builder(EditCommentActivity.this)
+                                                        .setTitle(
+                                                                R.string.login_credentials_expired_title)
                                                         .setMessage(
                                                                 R.string.expired_credentials_message)
                                                         .setPositiveButton(R.string.ok_button_text,
@@ -303,7 +304,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                     if (error.getMessage()
                                             .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new Builder(EditCommentActivity.this)
+                                        new AlertDialog.Builder(EditCommentActivity.this)
                                                 .setTitle(R.string.login_credentials_expired_title)
                                                 .setMessage(R.string.expired_credentials_message)
                                                 .setPositiveButton(R.string.ok_button_text,
@@ -397,7 +398,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                     if (error.getMessage()
                                             .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new Builder(EditCommentActivity.this)
+                                        new AlertDialog.Builder(EditCommentActivity.this)
                                                 .setTitle(R.string.login_credentials_expired_title)
                                                 .setMessage(R.string.expired_credentials_message)
                                                 .setPositiveButton(R.string.ok_button_text,
@@ -485,7 +486,7 @@ public class EditCommentActivity extends AppCompatActivity {
                                     if (error.getMessage()
                                             .equals(getString(R.string.bad_credentials_error))) {
 
-                                        new Builder(EditCommentActivity.this)
+                                        new AlertDialog.Builder(EditCommentActivity.this)
                                                 .setTitle(R.string.login_credentials_expired_title)
                                                 .setMessage(R.string.expired_credentials_message)
                                                 .setPositiveButton(R.string.ok_button_text,
@@ -556,7 +557,7 @@ public class EditCommentActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
-        new Builder(this).setTitle(R.string.discard_changes_title)
+        new AlertDialog.Builder(this).setTitle(R.string.discard_changes_title)
                 .setPositiveButton(R.string.discard_button_text,
                         new DialogInterface.OnClickListener() {
 
