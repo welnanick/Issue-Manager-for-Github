@@ -8,10 +8,7 @@
         android:id="@+id/pinnedRepositories"
         android:name="com.nickwelna.issuemanagerforgithub.PinnedRepositoriesFragment"
         android:label="fragment_pinned_repositories"
-        tools:layout="@layout/fragment_pinned_repositories" >
-        <action
-            android:id="@+id/action_pinnedRepositories_to_repositorySearch"
-            app:destination="@id/repositorySearch" />
+        tools:layout="@layout/fragment_pinned_repositories">
         <action
             android:id="@+id/action_pinnedRepositories_to_repositoryDetails"
             app:destination="@id/repositoryDetails" />
@@ -22,19 +19,10 @@
             app:popExitAnim="@anim/nav_default_enter_anim" />
     </fragment>
     <fragment
-        android:id="@+id/repositorySearch"
-        android:name="com.nickwelna.issuemanagerforgithub.RepositorySearchFragment"
-        android:label="fragment_repository_search"
-        tools:layout="@layout/fragment_repository_search" >
-        <action
-            android:id="@+id/action_repositorySearch_to_repositoryDetails"
-            app:destination="@id/repositoryDetails" />
-    </fragment>
-    <fragment
         android:id="@+id/repositoryDetails"
         android:name="com.nickwelna.issuemanagerforgithub.RepositoryDetailsFragment"
         android:label="fragment_repository_details"
-        tools:layout="@layout/fragment_repository_details" >
+        tools:layout="@layout/fragment_repository_details">
         <action
             android:id="@+id/action_repositoryDetails_to_issueDetails"
             app:destination="@id/issueDetails" />
@@ -46,7 +34,7 @@
         android:id="@+id/issueDetails"
         android:name="com.nickwelna.issuemanagerforgithub.IssueDetailsFragment"
         android:label="fragment_issue_details"
-        tools:layout="@layout/fragment_issue_details" >
+        tools:layout="@layout/fragment_issue_details">
         <action
             android:id="@+id/action_issueDetails_to_createEditComment"
             app:destination="@id/createEditComment" />
@@ -56,17 +44,17 @@
     </fragment>
     <fragment
         android:id="@+id/createEditIssue"
-        android:name="com.nickwelna.issuemanagerforgithub.CreateEditIssue"
+        android:name="com.nickwelna.issuemanagerforgithub.CreateEditIssueFragment"
         android:label="fragment_create_edit_issue"
-        tools:layout="@layout/fragment_create_edit_issue" ></fragment>
+        tools:layout="@layout/fragment_create_edit_issue"></fragment>
     <fragment
         android:id="@+id/createEditComment"
         android:name="com.nickwelna.issuemanagerforgithub.CreateEditComment"
         android:label="fragment_create_edit_comment"
-        tools:layout="@layout/fragment_create_edit_comment" ></fragment>
+        tools:layout="@layout/fragment_create_edit_comment"></fragment>
     <fragment
         android:id="@+id/githubLogin"
         android:name="com.nickwelna.issuemanagerforgithub.GithubLoginFragment"
         android:label="fragment_github_login"
-        tools:layout="@layout/fragment_github_login" ></fragment>
+        tools:layout="@layout/fragment_github_login"></fragment>
 </navigation>

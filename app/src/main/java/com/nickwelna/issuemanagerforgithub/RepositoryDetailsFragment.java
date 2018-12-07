@@ -22,8 +22,11 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import okhttp3.ResponseBody;
@@ -35,6 +38,8 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
 
     @BindView(R.id.issue_recycler_view)
     RecyclerView issueRecyclerView;
+    @BindView(R.id.repository_issues_swipe_refresh)
+    SwipeRefreshLayout swipeRefresh;
     private IssueAdapterMoshi issueAdapter;
     private String repositoryName;
 
@@ -61,17 +66,34 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         logger.atInfo().log("onCreateView() called");
+        activity.showFab();
         this.activity.setTitle(repositoryName);
         this.activity.setMenuProvider(this);
         activity.invalidateOptionsMenu();
         View view = inflater.inflate(R.layout.fragment_repository_details, container, false);
+        activity.setFabClick(v -> {
+            NavController controller = Navigation.findNavController(view);
+            Bundle args = new Bundle();
+            args.putBoolean(CreateEditIssueFragment.CREATE_ISSUE, true);
+            controller.navigate(R.id.action_repositoryDetails_to_createEditIssue, args);
+        });
         ButterKnife.bind(this, view);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(activity);
         issueRecyclerView.setLayoutManager(linearLayoutManager);
         issueAdapter = new IssueAdapterMoshi(repositoryName);
         issueRecyclerView.setAdapter(issueAdapter);
+        swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+        swipeRefresh.setOnRefreshListener(this::loadIssues);
+        swipeRefresh.setRefreshing(true);
         loadIssues();
         return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        logger.atInfo().log("onDestroyView() called");
+        activity.hideFab();
     }
 
     private void loadIssues() {
@@ -84,14 +106,10 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
     @Override
     public void inflateOptionsMenu(Menu menu) {
         activity.getMenuInflater().inflate(R.menu.repository_menu, menu);
-
         MenuItem pinUnpin = menu.findItem(R.id.action_pin_unpin);
-
         if (isPinned()) {
-
             pinUnpin.setTitle(R.string.unpin_repository_title);
-            pinUnpin.setIcon(R.drawable.ic_thumbtack_off_white_24dp);
-
+            pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
         }
     }
 
@@ -148,6 +166,7 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
             }
             else {
                 issueAdapter.updateIssues(response.body());
+                swipeRefresh.setRefreshing(false);
             }
         }
 

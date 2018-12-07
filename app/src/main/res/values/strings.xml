@@ -33,6 +33,8 @@
     <string name="add_title_append">Add</string>
     <string name="edit_title_append">Edit</string>
     <string name="issue_title_append">Issue</string>
+    <string name="create_issue_title">Create Issue</string>
+    <string name="edit_issue_title">Edit Issue</string>
     <string name="comment_title_append">Comment</string>
     <string name="oauth_token_key">OAuth_token</string>
     <string name="bad_credentials_error">Bad credentials</string>

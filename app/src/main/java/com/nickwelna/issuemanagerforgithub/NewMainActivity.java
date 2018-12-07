@@ -3,8 +3,10 @@ package com.nickwelna.issuemanagerforgithub;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.flogger.FluentLogger;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -26,12 +28,17 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.Navigation;
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class NewMainActivity extends AppCompatActivity {
+
+    @BindView(R.id.fab)
+    FloatingActionButton fab;
 
     private FirebaseDatabase database = FirebaseDatabase.getInstance();
     private FirebaseAuth auth = FirebaseAuth.getInstance();
@@ -50,6 +57,7 @@ public class NewMainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_new_main);
+        ButterKnife.bind(this);
     }
 
     @Override
@@ -157,6 +165,18 @@ public class NewMainActivity extends AppCompatActivity {
         userDataReference.child("pinned_repos").setValue(repositoryStrings);
         invalidateOptionsMenu();
         Toast.makeText(this, R.string.repository_pinned_toast, Toast.LENGTH_LONG).show();
+    }
+
+    public void showFab() {
+        fab.show();
+    }
+
+    public void hideFab() {
+        fab.hide();
+    }
+
+    public void setFabClick(View.OnClickListener listener) {
+        fab.setOnClickListener(listener);
     }
 
     private List<String> convertToStringList(List<RepositoryMoshi> pinnedRepositories) {

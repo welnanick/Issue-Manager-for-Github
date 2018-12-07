@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -30,6 +31,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import okhttp3.ResponseBody;
@@ -43,9 +45,12 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
 
     @BindView(R.id.repository_recycler_view)
     RecyclerView repositoryRecyclerView;
+    @BindView(R.id.pinned_repository_swipe_refresh)
+    SwipeRefreshLayout swipeRefresh;
 
     private RepositoryAdapterMoshi repositoryAdapter;
     private NewMainActivity activity;
+    private EditText searchText;
 
     private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
@@ -74,6 +79,16 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
             repositoryRecyclerView.setLayoutManager(linearLayoutManager);
             repositoryAdapter = new RepositoryAdapterMoshi();
             repositoryRecyclerView.setAdapter(repositoryAdapter);
+            swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+            swipeRefresh.setOnRefreshListener(() -> {
+                if (!TextUtils.isEmpty(searchText.getText())) {
+                    searchRepositories(searchText.getText().toString());
+                }
+                else {
+                    activity.loadPinnedRepositories();
+                }
+            });
+            swipeRefresh.setRefreshing(true);
             activity.loadPinnedRepositories();
             activity.loadPinnedIssues();
         }
@@ -89,52 +104,36 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
 
     @Override
     public void inflateOptionsMenu(Menu menu) {
-        //Inflate the menu
         activity.getMenuInflater().inflate(R.menu.options_menu, menu);
-
-        //Find the menu search item
         MenuItem searchItem = menu.findItem(R.id.action_search);
-
-        //get the searchView from the search item
         SearchView searchView = (SearchView) searchItem.getActionView();
-
-        //Set the query hint for the search view
         searchView.setQueryHint(getString(R.string.search_query_hint));
-
-        //Access the Edit Text in the search view
-        EditText searchText = searchView.findViewById(androidx.appcompat.R.id.search_src_text);
-
-        //make it so it performs our github search call when the user hits the search button on
-        // the keyboard
+        searchText = searchView.findViewById(androidx.appcompat.R.id.search_src_text);
         searchText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 searchRepositories(searchText.getText().toString());
             }
             return false;
         });
-
         searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
-
             @Override
             public boolean onMenuItemActionCollapse(MenuItem item) {
                 updateProviderData();
                 return true;
-
             }
 
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
                 repositoryAdapter.updateRepositories(new ArrayList<>());
                 return true;
-
             }
-
         });
     }
 
     @Override
     public void updateProviderData() {
         repositoryAdapter.updateRepositories(activity.getPinnedRepositories());
+        swipeRefresh.setRefreshing(false);
     }
 
     @Override
@@ -143,6 +142,7 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
     }
 
     private void searchRepositories(String searchQuery) {
+        swipeRefresh.setRefreshing(true);
         InputMethodManager imm = (InputMethodManager) activity
                 .getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null && imm.isAcceptingText()) {
@@ -182,6 +182,7 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
                 SearchResultMoshi results = response.body();
                 if (results != null) {
                     repositoryAdapter.updateRepositories(results.getItems());
+                    swipeRefresh.setRefreshing(false);
                 }
             }
         }
