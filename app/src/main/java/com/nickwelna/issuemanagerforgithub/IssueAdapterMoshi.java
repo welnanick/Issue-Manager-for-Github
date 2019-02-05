@@ -90,7 +90,7 @@ public class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi
             }
             Bundle bundle = new Bundle();
             bundle.putString(NewMainActivity.REPOSITORY_NAME, repositoryName);
-            bundle.putParcelable(NewMainActivity.CURRENT_ISSUE, issue);
+            bundle.putInt(NewMainActivity.CURRENT_ISSUE, issue.getNumber());
             itemView.setOnClickListener(Navigation.createNavigateOnClickListener(
                     R.id.action_repositoryDetails_to_issueDetails, bundle));
         }

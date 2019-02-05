@@ -1,6 +1,7 @@
 package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import com.bumptech.glide.request.RequestOptions;
 import com.nickwelna.issuemanagerforgithub.CommentAdapterMoshi.CommentViewHolderMoshi;
 import com.nickwelna.issuemanagerforgithub.models.GithubUserMoshi;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommonMoshi;
+import com.nickwelna.issuemanagerforgithub.models.IssueMoshi;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 import androidx.annotation.NonNull;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -32,9 +35,11 @@ public class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewHolderM
 
     private List<IssueCommentCommonMoshi> comments = new ArrayList<>();
     private String username;
+    private String repositoryName;
 
-    CommentAdapterMoshi(String username) {
+    CommentAdapterMoshi(String username, String repositoryName) {
         this.username = username;
+        this.repositoryName = repositoryName;
     }
 
     @NonNull
@@ -42,7 +47,7 @@ public class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewHolderM
     public CommentViewHolderMoshi onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View itemView = inflater.inflate(R.layout.comment_list_item, parent, false);
-        return new CommentViewHolderMoshi(itemView, parent.getContext(), username);
+        return new CommentViewHolderMoshi(itemView, parent.getContext(), username, repositoryName);
     }
 
     @Override
@@ -75,11 +80,13 @@ public class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewHolderM
 
         Context context;
         String usernameString;
+        String repositoryName;
 
-        CommentViewHolderMoshi(@NonNull View itemView, Context context, String username) {
+        CommentViewHolderMoshi(@NonNull View itemView, Context context, String username, String repositoryName) {
             super(itemView);
             this.context = context;
             this.usernameString = username;
+            this.repositoryName = repositoryName;
             ButterKnife.bind(this, itemView);
         }
 
@@ -95,6 +102,17 @@ public class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewHolderM
                     context.getString(R.string.avatar_image_content_description, login));
             if (!login.equals(usernameString)) {
                 edit.setVisibility(View.GONE);
+            }
+            else {
+                if (comment instanceof IssueMoshi) {
+                    Bundle args = new Bundle();
+                    args.putBoolean(CreateEditIssueFragment.CREATE_ISSUE, false);
+                    args.putString(NewMainActivity.REPOSITORY_NAME, repositoryName);
+                    args.putInt(CreateEditIssueFragment.ISSUE_NUMBER, ((IssueMoshi)comment).getNumber());
+                    args.putString(CreateEditIssueFragment.ISSUE_NAME, ((IssueMoshi)comment).getTitle());
+                    args.putString(CreateEditIssueFragment.ISSUE_BODY, comment.getBody());
+                    edit.setOnClickListener(Navigation.createNavigateOnClickListener(R.id.action_issueDetails_to_createEditIssue, args));
+                }
             }
         }
 

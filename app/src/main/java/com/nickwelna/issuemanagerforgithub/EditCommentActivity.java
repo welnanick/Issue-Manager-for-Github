@@ -59,7 +59,7 @@ public class EditCommentActivity extends AppCompatActivity {
     public static final String COMMENT_ID_KEY = "action";
     public static final String ACTION_ADD = "add";
     public static final String ACTION_EDIT = "edit";
-    public static final String TYPE_ISSUE = "issue";
+    public static final String TYPE_ISSUE = "issueNumber";
     public static final String TYPE_COMMENT = "comment";
 
     @Override

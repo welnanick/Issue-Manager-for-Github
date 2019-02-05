@@ -90,7 +90,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     public static final String USER_KEY = "user";
     public static final String PINNED_ISSUES_MENU_KEY = "pinned_issues_menu";
     public static final String ALL_COMMENTS_KEY = "all_comments";
-    public static final String ISSUE_KEY = "issue";
+    public static final String ISSUE_KEY = "issueNumber";
     public static final String PINNED_ISSUES_KEY = "pinned_issues";
 
     @Override

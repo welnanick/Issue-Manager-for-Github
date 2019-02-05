@@ -10,6 +10,7 @@ import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.GithubUserMoshi;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
+import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequestMoshi;
 import com.nickwelna.issuemanagerforgithub.models.IssueCloseOpenRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommonMoshi;
 import com.nickwelna.issuemanagerforgithub.models.IssueMoshi;
@@ -67,6 +68,10 @@ public interface GitHubService {
     Call<Issue> getIssue(@Path("owner") String owner, @Path("repository") String repository,
                          @Path("issue") int issue);
 
+    @GET("/repos/{owner}/{repository}/issues/{issue}")
+    Call<IssueMoshi> getIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
+                         @Path("issue") int issue);
+
     @GET("/repos/{owner}/{repository}/issues/{issue}/comments")
     Call<Comment[]> getComments(@Path("owner") String owner, @Path("repository") String repository,
                                 @Path("issue") int issue);
@@ -80,9 +85,17 @@ public interface GitHubService {
     Call<Issue> addIssue(@Path("owner") String owner, @Path("repository") String repository,
                          @Body IssueAddEditRequest request);
 
+    @POST("/repos/{owner}/{repository}/issues")
+    Call<IssueMoshi> addIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
+                         @Body IssueAddEditRequestMoshi request);
+
     @PATCH("/repos/{owner}/{repository}/issues/{issue}")
     Call<Issue> editIssue(@Path("owner") String owner, @Path("repository") String repository,
                           @Path("issue") int issue, @Body IssueAddEditRequest request);
+
+    @PATCH("/repos/{owner}/{repository}/issues/{issue}")
+    Call<IssueMoshi> editIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
+                          @Path("issue") int issue, @Body IssueAddEditRequestMoshi request);
 
     @PATCH("/repos/{owner}/{repository}/issues/{issue}")
     Call<Issue> openCloseIssue(@Path("owner") String owner, @Path("repository") String repository,

@@ -75,6 +75,7 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
             NavController controller = Navigation.findNavController(view);
             Bundle args = new Bundle();
             args.putBoolean(CreateEditIssueFragment.CREATE_ISSUE, true);
+            args.putString(NewMainActivity.REPOSITORY_NAME, repositoryName);
             controller.navigate(R.id.action_repositoryDetails_to_createEditIssue, args);
         });
         ButterKnife.bind(this, view);

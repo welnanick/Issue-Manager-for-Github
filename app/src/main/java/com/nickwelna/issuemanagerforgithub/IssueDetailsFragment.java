@@ -24,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import okhttp3.ResponseBody;
@@ -35,10 +36,14 @@ public class IssueDetailsFragment extends Fragment implements OptionsMenuProvide
 
     @BindView(R.id.comment_recycler_view)
     RecyclerView commentRecyclerView;
+    @BindView(R.id.issue_details_swipe_refresh)
+    SwipeRefreshLayout swipeRefresh;
     private CommentAdapterMoshi commentAdapter;
 
     NewMainActivity activity;
     String repositoryName;
+    int issueNumber;
+
     IssueMoshi issue;
 
     private static final FluentLogger logger = FluentLogger.forEnclosingClass();
@@ -56,30 +61,38 @@ public class IssueDetailsFragment extends Fragment implements OptionsMenuProvide
         logger.atInfo().log("onCreate() called");
         Bundle arguments = getArguments();
         repositoryName = arguments.getString(NewMainActivity.REPOSITORY_NAME);
-        issue = arguments.getParcelable(NewMainActivity.CURRENT_ISSUE);
+        issueNumber = arguments.getInt(NewMainActivity.CURRENT_ISSUE);
     }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         logger.atInfo().log("onCreateView() called");
-        this.activity.setTitle(issue.getTitle());
-        this.activity.setMenuProvider(this);
-        activity.invalidateOptionsMenu();
         View view = inflater.inflate(R.layout.fragment_issue_details, container, false);
         ButterKnife.bind(this, view);
         commentRecyclerView.setLayoutManager(new LinearLayoutManager(activity));
-        commentAdapter = new CommentAdapterMoshi(activity.getUser().getLogin());
+        commentAdapter = new CommentAdapterMoshi(activity.getUser().getLogin(), repositoryName);
         commentRecyclerView.setAdapter(commentAdapter);
-        loadComments();
+        swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+        swipeRefresh.setOnRefreshListener(this::loadIssue);
+        swipeRefresh.setRefreshing(true);
+        loadIssue();
         return view;
+    }
+
+    private void loadIssue() {
+        logger.atInfo().log("loadIssue() called");
+        String[] repoNameSplit = repositoryName.split("/");
+        activity.getService()
+                .getIssueMoshi(repoNameSplit[0], repoNameSplit[1], issueNumber)
+                .enqueue(new LoadIssueCallback());
     }
 
     private void loadComments() {
         logger.atInfo().log("loadComments() called");
         String[] repoNameSplit = repositoryName.split("/");
         activity.getService()
-                .getCommentsMoshi(repoNameSplit[0], repoNameSplit[1], issue.getNumber())
+                .getCommentsMoshi(repoNameSplit[0], repoNameSplit[1], issueNumber)
                 .enqueue(new GetCommentsCallback());
 
     }
@@ -130,19 +143,18 @@ public class IssueDetailsFragment extends Fragment implements OptionsMenuProvide
                     JsonAdapter<APIRequestErrorMoshi> jsonAdapter = moshi
                             .adapter(APIRequestErrorMoshi.class);
                     error = jsonAdapter.fromJson(errorBodyJson);
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     logger.atSevere().withCause(e).log("Error Body string() failed");
                 }
                 if (error != null) {
                     logger.atSevere().log(error.getMessage());
                 }
-            }
-            else {
+            } else {
 
                 List<IssueCommentCommonMoshi> comments = response.body();
                 comments.add(0, issue);
                 commentAdapter.updateComments(comments);
+                swipeRefresh.setRefreshing(false);
 
             }
         }
@@ -152,6 +164,43 @@ public class IssueDetailsFragment extends Fragment implements OptionsMenuProvide
                               @NonNull Throwable t) {
             logger.atInfo().log("GetCommentsCallback onFailure() called");
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private class LoadIssueCallback implements Callback<IssueMoshi> {
+        @Override
+        public void onResponse(Call<IssueMoshi> call, Response<IssueMoshi> response) {
+            logger.atInfo().log("LoadIssueCallback onResponse() called");
+            if (response.code() == 401) {
+                ResponseBody errorBody = response.errorBody();
+                APIRequestErrorMoshi error = null;
+                try {
+                    String errorBodyJson = "";
+                    if (errorBody != null) {
+                        errorBodyJson = errorBody.string();
+                    }
+                    Moshi moshi = new Moshi.Builder().build();
+                    JsonAdapter<APIRequestErrorMoshi> jsonAdapter = moshi
+                            .adapter(APIRequestErrorMoshi.class);
+                    error = jsonAdapter.fromJson(errorBodyJson);
+                } catch (IOException e) {
+                    logger.atSevere().withCause(e).log("Error Body string() failed");
+                }
+                if (error != null) {
+                    logger.atSevere().log(error.getMessage());
+                }
+            } else {
+                issue = response.body();
+                activity.setTitle(issue.getTitle());
+                activity.setMenuProvider(IssueDetailsFragment.this);
+                activity.invalidateOptionsMenu();
+                loadComments();
+            }
+        }
+
+        @Override
+        public void onFailure(Call<IssueMoshi> call, Throwable t) {
+
         }
     }
 
