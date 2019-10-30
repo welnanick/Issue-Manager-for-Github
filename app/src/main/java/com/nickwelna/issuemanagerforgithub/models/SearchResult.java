@@ -1,29 +1,17 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-import java.util.ArrayList;
+import com.squareup.moshi.Json;
 
-public class SearchResult {
+import java.util.List;
 
-    public int total_count;
-    boolean incomplete_results;
-    ArrayList<Repository> items;
+public final class SearchResult {
+    @Json(name = "total_count")
+    int totalCount;
+    @Json(name = "incomplete_results")
+    boolean incompleteResults;
+    private List<Repository> items;
 
-    public int getTotal_count() {
-
-        return total_count;
-
-    }
-
-    public boolean isIncomplete_results() {
-
-        return incomplete_results;
-
-    }
-
-    public ArrayList<Repository> getItems() {
-
+    public List<Repository> getItems() {
         return items;
-
     }
-
 }

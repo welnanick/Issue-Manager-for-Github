@@ -1,41 +1,38 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-import android.os.Parcelable;
+import com.jakewharton.nopen.annotation.Open;
+import com.squareup.moshi.Json;
 
-public abstract class IssueCommentCommon implements Parcelable {
-
+@Open
+public class IssueCommentCommon {
     String url;
-    String html_url;
+    @Json(name = "html_url")
+    String htmlUrl;
     int id;
-    String node_id;
-    GithubUser user;
-    String created_at;
-    String updated_at;
-    String author_association;
-    String body;
+    @Json(name = "node_id")
+    String nodeId;
+    @Json(name = "updated_at")
+    String updatedAt;
+    @Json(name = "author_association")
+    String authorAssociation;
+    private GithubUser user;
+    @Json(name = "created_at")
+    private String createdAt;
+    private String body;
 
     public GithubUser getUser() {
-
         return user;
-
     }
 
     public String getBody() {
-
         return body;
-
-    }
-
-    public int getId() {
-
-        return id;
-
     }
 
     public String getCreatedAt() {
-
-        return created_at;
-
+        return createdAt;
     }
 
+    public int getId() {
+        return id;
+    }
 }

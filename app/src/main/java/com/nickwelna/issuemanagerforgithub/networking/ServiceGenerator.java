@@ -7,7 +7,7 @@ import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.moshi.MoshiConverterFactory;
 
-public class ServiceGenerator {
+public final class ServiceGenerator {
 
     private static final String API_BASE_URL = "https://api.github.com";
     private static OkHttpClient.Builder httpClient = new OkHttpClient.Builder();

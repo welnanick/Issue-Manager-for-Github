@@ -8,7 +8,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.nickwelna.issuemanagerforgithub.IssueAdapterMoshi.IssueViewHolderMoshi;
-import com.nickwelna.issuemanagerforgithub.models.IssueMoshi;
+import com.nickwelna.issuemanagerforgithub.models.Issue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +20,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi> {
-    private List<IssueMoshi> issues = new ArrayList<>();
+public final class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi> {
+    private List<Issue> issues = new ArrayList<>();
     private String repositoryName;
 
     IssueAdapterMoshi(String repositoryName) {
@@ -46,7 +46,7 @@ public class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi
         return issues.size();
     }
 
-    void updateIssues(List<IssueMoshi> issues) {
+    void updateIssues(List<Issue> issues) {
         this.issues = issues;
         notifyDataSetChanged();
     }
@@ -71,21 +71,20 @@ public class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi
             ButterKnife.bind(this, itemView);
         }
 
-        public void bind(IssueMoshi issue) {
+        public void bind(Issue issue) {
             issueTitle.setText(issue.getTitle());
             issueNumber.setText(context.getString(R.string.issue_number_format, issue.getNumber()));
             issueComments.setText(context.getResources()
                                          .getQuantityString(R.plurals.comments_format,
-                                                            issue.getComments(),
-                                                            issue.getComments()));
+                                                 issue.getComments(),
+                                                 issue.getComments()));
             String issueState = issue.getState();
             String issueStateCap = issueState.substring(0, 1).toUpperCase() + issueState
                     .substring(1);
             issueStatus.setText(issueStateCap);
             if (issueState.equals(context.getString(R.string.open_state_text))) {
                 issueStatus.setTextColor(ContextCompat.getColor(context, R.color.material_green));
-            }
-            else {
+            } else {
                 issueStatus.setTextColor(ContextCompat.getColor(context, R.color.material_red));
             }
             Bundle bundle = new Bundle();

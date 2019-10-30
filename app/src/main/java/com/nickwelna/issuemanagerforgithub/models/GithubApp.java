@@ -1,9 +1,12 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-public class GithubApp {
+import com.squareup.moshi.Json;
+
+public final class GithubApp {
 
     String name;
     String url;
-    String client_id;
+    @Json(name = "client_id")
+    String clientId;
 
 }

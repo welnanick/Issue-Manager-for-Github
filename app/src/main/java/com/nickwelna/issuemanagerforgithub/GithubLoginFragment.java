@@ -20,9 +20,9 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.common.flogger.FluentLogger;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.GithubAuthProvider;
-import com.nickwelna.issuemanagerforgithub.models.APIRequestErrorMoshi;
-import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequestMoshi;
-import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponseMoshi;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
+import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequest;
+import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponse;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
@@ -31,7 +31,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.Group;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
@@ -44,8 +46,9 @@ import retrofit2.Response;
 
 import static android.content.Context.INPUT_METHOD_SERVICE;
 
-public class GithubLoginFragment extends Fragment {
+public final class GithubLoginFragment extends Fragment implements NavigationHelper {
 
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
     @BindView(R.id.username_edit_text)
     TextInputEditText usernameEditText;
     @BindView(R.id.password_edit_text)
@@ -60,9 +63,6 @@ public class GithubLoginFragment extends Fragment {
     Group group;
     @BindView(R.id.progress_bar)
     ProgressBar progressBar;
-
-    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
-
     private NewMainActivity activity;
     private final OnEditorActionListener authorizeAction = (v, actionId, event) -> {
         if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -75,13 +75,28 @@ public class GithubLoginFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
         logger.atInfo().log("onCreateView() called");
         View view = inflater.inflate(R.layout.fragment_github_login, container, false);
         ButterKnife.bind(this, view);
         loginButton.setOnClickListener((button) -> authorizeUser());
         passwordEditText.setOnEditorActionListener(authorizeAction);
         twoFactorEditText.setOnEditorActionListener(authorizeAction);
+        activity.setTitle(R.string.login_title);
         return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        activity.getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(),
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        activity.finish();
+                    }
+                });
+
     }
 
     @Override
@@ -89,6 +104,7 @@ public class GithubLoginFragment extends Fragment {
         logger.atInfo().log("onAttach() called");
         super.onAttach(context);
         this.activity = (NewMainActivity) context;
+        activity.setNavigationHelper(this);
     }
 
     private void authorizeUser() {
@@ -110,21 +126,21 @@ public class GithubLoginFragment extends Fragment {
         if (twoFactorVisible) {
             twoFactorInputLayout.setVisibility(View.GONE);
             headers.put(getString(R.string.two_factor_header),
-                        twoFactorEditText.getText().toString());
+                    twoFactorEditText.getText().toString());
         }
         group.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         Moshi moshi = new Moshi.Builder().build();
-        JsonAdapter<AuthorizationRequestMoshi> jsonAdapter = moshi
-                .adapter(AuthorizationRequestMoshi.class);
-        String test = jsonAdapter.toJson(new AuthorizationRequestMoshi());
+        JsonAdapter<AuthorizationRequest> jsonAdapter = moshi
+                .adapter(AuthorizationRequest.class);
+        String test = jsonAdapter.toJson(new AuthorizationRequest());
         logger.atInfo().log(test);
-        activity.getService().authorizeUserMoshi(headers, new AuthorizationRequestMoshi())
+        activity.getService().authorizeUser(headers, new AuthorizationRequest())
                 .enqueue(new LoginCallback(twoFactorVisible));
 
     }
 
-    private void login(@NonNull AuthorizationResponseMoshi body) {
+    private void login(@NonNull AuthorizationResponse body) {
         logger.atInfo().log("login() called");
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         SharedPreferences.Editor editor = preferences.edit();
@@ -136,18 +152,18 @@ public class GithubLoginFragment extends Fragment {
                 .addOnCompleteListener(activity, task -> {
                     if (!task.isSuccessful()) {
                         Toast.makeText(activity, R.string.firebase_authentication_failed_toast,
-                                       Toast.LENGTH_SHORT).show();
-                    }
-                    else {
+                                Toast.LENGTH_SHORT).show();
+                    } else {
                         activity.updateUserDataReference();
                         activity.loadUser();
+                        logger.atInfo().log("User logged in, navigating to repo list fragment");
                         Navigation.findNavController(activity, R.id.nav_host_fragment)
                                   .popBackStack();
                     }
                 });
     }
 
-    private class LoginCallback implements Callback<AuthorizationResponseMoshi> {
+    private class LoginCallback implements Callback<AuthorizationResponse> {
 
         private boolean twoFactorVisible;
 
@@ -156,17 +172,16 @@ public class GithubLoginFragment extends Fragment {
         }
 
         @Override
-        public void onResponse(@NonNull Call<AuthorizationResponseMoshi> call,
-                               @NonNull Response<AuthorizationResponseMoshi> response) {
+        public void onResponse(@NonNull Call<AuthorizationResponse> call,
+                               @NonNull Response<AuthorizationResponse> response) {
             logger.atInfo().log("LoginCallback onResponse");
             switch (response.code()) {
                 case 201:
                     logger.atInfo().log("201 Received");
-                    AuthorizationResponseMoshi body = response.body();
+                    AuthorizationResponse body = response.body();
                     if (body != null) {
                         login(body);
-                    }
-                    else {
+                    } else {
                         logger.atWarning().log("Response was 201, but response.body() was null");
                     }
                     break;
@@ -178,35 +193,32 @@ public class GithubLoginFragment extends Fragment {
                         twoFactorInputLayout.setVisibility(View.VISIBLE);
                     }
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestErrorMoshi error = null;
+                    APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {
                             errorBodyJson = errorBody.string();
                         }
                         Moshi moshi = new Moshi.Builder().build();
-                        JsonAdapter<APIRequestErrorMoshi> jsonAdapter = moshi
-                                .adapter(APIRequestErrorMoshi.class);
+                        JsonAdapter<APIRequestError> jsonAdapter = moshi
+                                .adapter(APIRequestError.class);
                         error = jsonAdapter.fromJson(errorBodyJson);
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         logger.atSevere().withCause(e).log("Error Body string() failed");
                     }
 
                     if (error != null) {
                         if (error.getMessage().equals(getString(R.string.bad_credentials_error))) {
                             Toast.makeText(activity, R.string.bad_credentials_toast,
-                                           Toast.LENGTH_LONG).show();
-                        }
-                        else {
+                                    Toast.LENGTH_LONG).show();
+                        } else {
                             Toast.makeText(getContext(), R.string.two_factor_toast,
-                                           Toast.LENGTH_LONG).show();
+                                    Toast.LENGTH_LONG).show();
                             twoFactorInputLayout.setVisibility(View.VISIBLE);
                             passwordEditText.setImeOptions(EditorInfo.IME_ACTION_NEXT);
                             logger.atInfo().log("Github says this user needs 2fa to login");
                         }
-                    }
-                    else {
+                    } else {
                         Toast.makeText(activity, "Something went very wrong", Toast.LENGTH_LONG)
                              .show();
                     }
@@ -218,7 +230,7 @@ public class GithubLoginFragment extends Fragment {
         }
 
         @Override
-        public void onFailure(@NonNull Call<AuthorizationResponseMoshi> call,
+        public void onFailure(@NonNull Call<AuthorizationResponse> call,
                               @NonNull Throwable t) {
             group.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);

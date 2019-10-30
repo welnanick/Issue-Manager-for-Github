@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.nickwelna.issuemanagerforgithub.RepositoryAdapterMoshi.RepositoryViewHolderMoshi;
-import com.nickwelna.issuemanagerforgithub.models.RepositoryMoshi;
+import com.nickwelna.issuemanagerforgithub.models.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +18,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public class RepositoryAdapterMoshi extends RecyclerView.Adapter<RepositoryViewHolderMoshi> {
-    private List<RepositoryMoshi> repositoryList = new ArrayList<>();
+public final class RepositoryAdapterMoshi extends RecyclerView.Adapter<RepositoryViewHolderMoshi> {
+    private List<Repository> repositoryList = new ArrayList<>();
 
     @NonNull
     @Override
@@ -39,7 +39,7 @@ public class RepositoryAdapterMoshi extends RecyclerView.Adapter<RepositoryViewH
         return repositoryList.size();
     }
 
-    void updateRepositories(@NonNull List<RepositoryMoshi> newRepositories) {
+    void updateRepositories(@NonNull List<Repository> newRepositories) {
         repositoryList = newRepositories;
         notifyDataSetChanged();
     }
@@ -54,7 +54,7 @@ public class RepositoryAdapterMoshi extends RecyclerView.Adapter<RepositoryViewH
             ButterKnife.bind(this, itemView);
         }
 
-        public void bind(@NonNull RepositoryMoshi repository) {
+        public void bind(@NonNull Repository repository) {
             String repositoryNameString = repository.getFullName();
             repositoryName.setText(repositoryNameString);
             Bundle bundle = new Bundle();

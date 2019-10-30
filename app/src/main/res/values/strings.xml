@@ -35,6 +35,8 @@
     <string name="issue_title_append">Issue</string>
     <string name="create_issue_title">Create Issue</string>
     <string name="edit_issue_title">Edit Issue</string>
+    <string name="create_comment_title">Create Comment</string>
+    <string name="edit_comment_title">Edit Comment</string>
     <string name="comment_title_append">Comment</string>
     <string name="oauth_token_key">OAuth_token</string>
     <string name="bad_credentials_error">Bad credentials</string>
@@ -91,7 +93,5 @@
     <string name="issue_number_format">#%d</string>
     <string name="network_error_toast">Network error, check network and try again</string>
     <string name="helper_text">* Required</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="login_title">Login</string>
 </resources>

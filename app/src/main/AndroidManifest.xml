@@ -15,28 +15,8 @@
         android:supportsRtl="true"
         tools:ignore="GoogleAppIndexingWarning">
         <activity
-            android:name=".MainActivity"
-            android:launchMode="singleTop"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".IssueListActivity"
-            android:launchMode="standard"
-            android:parentActivityName=".MainActivity"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".IssueDetailsActivity"
-            android:parentActivityName=".IssueListActivity"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
-            android:name=".EditCommentActivity"
-            android:theme="@style/AppTheme.DarkActionBar" />
-        <activity
-            android:name=".LoginActivity"
-            android:theme="@style/AppTheme.DarkActionBar" />
-
-        <activity
             android:name=".NewMainActivity"
-            android:theme="@style/AppTheme.DarkActionBar">
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

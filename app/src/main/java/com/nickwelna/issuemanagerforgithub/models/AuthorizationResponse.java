@@ -1,24 +1,27 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-public class AuthorizationResponse {
+import com.squareup.moshi.Json;
 
+public final class AuthorizationResponse {
     int id;
     String url;
     GithubApp app;
-    String token;
-    String hashed_token;
-    String token_last_eight;
+    @Json(name = "hashed_token")
+    String hashedToken;
+    @Json(name = "token_last_eight")
+    String tokenLastEight;
     String note;
-    String note_url;
-    String created_at;
-    String updated_at;
+    @Json(name = "note_url")
+    String noteUrl;
+    @Json(name = "created_at")
+    String createdAt;
+    @Json(name = "updated_at")
+    String updatedAt;
     String[] scopes;
     String fingerprint;
+    private String token;
 
     public String getToken() {
-
         return token;
-
     }
-
 }

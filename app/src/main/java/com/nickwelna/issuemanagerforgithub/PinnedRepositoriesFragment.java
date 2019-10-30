@@ -16,8 +16,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.common.flogger.FluentLogger;
-import com.nickwelna.issuemanagerforgithub.models.APIRequestErrorMoshi;
-import com.nickwelna.issuemanagerforgithub.models.SearchResultMoshi;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
+import com.nickwelna.issuemanagerforgithub.models.SearchResult;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
@@ -41,37 +41,34 @@ import retrofit2.Response;
 
 import static android.content.Context.INPUT_METHOD_SERVICE;
 
-public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuProvider {
+public final class PinnedRepositoriesFragment extends Fragment implements NavigationHelper {
 
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
     @BindView(R.id.repository_recycler_view)
     RecyclerView repositoryRecyclerView;
     @BindView(R.id.pinned_repository_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
-
     private RepositoryAdapterMoshi repositoryAdapter;
     private NewMainActivity activity;
     private EditText searchText;
-
-    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         logger.atInfo().log("onCreateView() called");
-        activity.setTitle(R.string.pinned_repositories_title);
-        activity.setMenuProvider(this);
-        activity.invalidateOptionsMenu();
         View view = inflater.inflate(R.layout.fragment_pinned_repositories, container, false);
         ButterKnife.bind(this, view);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         String token = preferences.getString(getString(R.string.oauth_token_key), null);
         if (token == null) {
-            logger.atInfo().log("User not logged in, navigating to login fragment");
+            logger.atInfo().log("User not logged in, launching login fragment");
             Navigation.findNavController(activity, R.id.nav_host_fragment)
-                      .navigate(R.id.action_pinnedRepositories_to_githubLogin);
-        }
-        else {
+                      .navigate(R.id.githubLogin);
+        } else {
             logger.atInfo().log("User logged in, staying here");
+            activity.setNavigationHelper(this);
+            activity.invalidateOptionsMenu();
+            activity.setTitle(R.string.pinned_repositories_title);
             activity.updateUserDataReference();
             activity.setService(ServiceGenerator.createService(token));
             activity.loadUser();
@@ -83,8 +80,7 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
             swipeRefresh.setOnRefreshListener(() -> {
                 if (!TextUtils.isEmpty(searchText.getText())) {
                     searchRepositories(searchText.getText().toString());
-                }
-                else {
+                } else {
                     activity.loadPinnedRepositories();
                 }
             });
@@ -149,37 +145,35 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
             imm.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
         }
 
-        activity.getService().searchRepositoriesMoshi(searchQuery)
+        activity.getService().searchRepositories(searchQuery)
                 .enqueue(new SearchRepositoryCallback());
     }
 
-    private class SearchRepositoryCallback implements Callback<SearchResultMoshi> {
+    private class SearchRepositoryCallback implements Callback<SearchResult> {
         @Override
-        public void onResponse(@NonNull Call<SearchResultMoshi> call,
-                               @NonNull Response<SearchResultMoshi> response) {
+        public void onResponse(@NonNull Call<SearchResult> call,
+                               @NonNull Response<SearchResult> response) {
 
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestErrorMoshi error = null;
+                APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
                         errorBodyJson = errorBody.string();
                     }
                     Moshi moshi = new Moshi.Builder().build();
-                    JsonAdapter<APIRequestErrorMoshi> jsonAdapter = moshi
-                            .adapter(APIRequestErrorMoshi.class);
+                    JsonAdapter<APIRequestError> jsonAdapter = moshi
+                            .adapter(APIRequestError.class);
                     error = jsonAdapter.fromJson(errorBodyJson);
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     logger.atSevere().withCause(e).log("Error Body string() failed");
                 }
                 if (error != null) {
                     logger.atSevere().log(error.getMessage());
                 }
-            }
-            else {
-                SearchResultMoshi results = response.body();
+            } else {
+                SearchResult results = response.body();
                 if (results != null) {
                     repositoryAdapter.updateRepositories(results.getItems());
                     swipeRefresh.setRefreshing(false);
@@ -188,7 +182,7 @@ public class PinnedRepositoriesFragment extends Fragment implements OptionsMenuP
         }
 
         @Override
-        public void onFailure(@NonNull Call<SearchResultMoshi> call, @NonNull Throwable t) {
+        public void onFailure(@NonNull Call<SearchResult> call, @NonNull Throwable t) {
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
         }
     }

@@ -4,7 +4,7 @@
 
     <item
         android:id="@+id/action_pin_unpin"
-        android:icon="@drawable/ic_thumbtack_off_white_24dp"
+        android:icon="@drawable/ic_thumbtack_white_24dp"
         android:title="@string/pin_repository"
         app:showAsAction="ifRoom" />
 

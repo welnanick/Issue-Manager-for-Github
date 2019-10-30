@@ -1,23 +1,15 @@
 package com.nickwelna.issuemanagerforgithub.networking;
 
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequest;
-import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequestMoshi;
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponse;
-import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponseMoshi;
-import com.nickwelna.issuemanagerforgithub.models.Comment;
 import com.nickwelna.issuemanagerforgithub.models.CommentAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
-import com.nickwelna.issuemanagerforgithub.models.GithubUserMoshi;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
-import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequestMoshi;
 import com.nickwelna.issuemanagerforgithub.models.IssueCloseOpenRequest;
-import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommonMoshi;
-import com.nickwelna.issuemanagerforgithub.models.IssueMoshi;
+import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
-import com.nickwelna.issuemanagerforgithub.models.SearchResultMoshi;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -38,64 +30,33 @@ public interface GitHubService {
     Call<AuthorizationResponse> authorizeUser(@HeaderMap Map<String, String> headers,
                                               @Body AuthorizationRequest request);
 
-    @POST("/authorizations")
-    Call<AuthorizationResponseMoshi> authorizeUserMoshi(@HeaderMap Map<String, String> headers,
-                                                        @Body AuthorizationRequestMoshi request);
-
     @GET("/user")
     Call<GithubUser> getAuthorizedUser();
-
-    @GET("/user")
-    Call<GithubUserMoshi> getAuthorizedUserMoshi();
 
     @GET("/search/repositories")
     Call<SearchResult> searchRepositories(@Query("q") String search);
 
-    @GET("/search/repositories")
-    Call<SearchResultMoshi> searchRepositoriesMoshi(@Query("q") String search);
-
     @GET("/repos/{owner}/{repository}/issues")
-    Call<ArrayList<Issue>> getIssues(@Path("owner") String owner,
-                                     @Path("repository") String repository,
-                                     @Query("state") String state);
-
-    @GET("/repos/{owner}/{repository}/issues")
-    Call<List<IssueMoshi>> getIssuesMoshi(@Path("owner") String owner,
-                                          @Path("repository") String repository,
-                                          @Query("state") String state);
+    Call<List<Issue>> getIssues(@Path("owner") String owner,
+                                @Path("repository") String repository,
+                                @Query("state") String state);
 
     @GET("/repos/{owner}/{repository}/issues/{issue}")
     Call<Issue> getIssue(@Path("owner") String owner, @Path("repository") String repository,
                          @Path("issue") int issue);
 
-    @GET("/repos/{owner}/{repository}/issues/{issue}")
-    Call<IssueMoshi> getIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
-                         @Path("issue") int issue);
-
     @GET("/repos/{owner}/{repository}/issues/{issue}/comments")
-    Call<Comment[]> getComments(@Path("owner") String owner, @Path("repository") String repository,
-                                @Path("issue") int issue);
-
-    @GET("/repos/{owner}/{repository}/issues/{issue}/comments")
-    Call<List<IssueCommentCommonMoshi>> getCommentsMoshi(@Path("owner") String owner,
-                                                         @Path("repository") String repository,
-                                                         @Path("issue") int issue);
+    Call<List<IssueCommentCommon>> getComments(@Path("owner") String owner,
+                                               @Path("repository") String repository,
+                                               @Path("issue") int issue);
 
     @POST("/repos/{owner}/{repository}/issues")
     Call<Issue> addIssue(@Path("owner") String owner, @Path("repository") String repository,
                          @Body IssueAddEditRequest request);
 
-    @POST("/repos/{owner}/{repository}/issues")
-    Call<IssueMoshi> addIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
-                         @Body IssueAddEditRequestMoshi request);
-
     @PATCH("/repos/{owner}/{repository}/issues/{issue}")
     Call<Issue> editIssue(@Path("owner") String owner, @Path("repository") String repository,
                           @Path("issue") int issue, @Body IssueAddEditRequest request);
-
-    @PATCH("/repos/{owner}/{repository}/issues/{issue}")
-    Call<IssueMoshi> editIssueMoshi(@Path("owner") String owner, @Path("repository") String repository,
-                          @Path("issue") int issue, @Body IssueAddEditRequestMoshi request);
 
     @PATCH("/repos/{owner}/{repository}/issues/{issue}")
     Call<Issue> openCloseIssue(@Path("owner") String owner, @Path("repository") String repository,

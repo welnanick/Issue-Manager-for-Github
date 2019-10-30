@@ -1,14 +1,13 @@
 package com.nickwelna.issuemanagerforgithub.models;
 
-public class APIRequestError {
+import com.squareup.moshi.Json;
 
-    String message;
-    String documentation_url;
+public final class APIRequestError {
+    @Json(name = "documentation_url")
+    String documentationUrl;
+    private String message;
 
     public String getMessage() {
-
         return message;
-
     }
-
 }

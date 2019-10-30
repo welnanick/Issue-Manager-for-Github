@@ -9,10 +9,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.google.common.base.Splitter;
 import com.google.common.flogger.FluentLogger;
-import com.nickwelna.issuemanagerforgithub.models.APIRequestErrorMoshi;
-import com.nickwelna.issuemanagerforgithub.models.IssueMoshi;
-import com.nickwelna.issuemanagerforgithub.models.RepositoryMoshi;
+import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
+import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -34,18 +35,16 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class RepositoryDetailsFragment extends Fragment implements OptionsMenuProvider {
+public final class RepositoryDetailsFragment extends Fragment implements NavigationHelper {
 
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
     @BindView(R.id.issue_recycler_view)
     RecyclerView issueRecyclerView;
     @BindView(R.id.repository_issues_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
     private IssueAdapterMoshi issueAdapter;
     private String repositoryName;
-
     private NewMainActivity activity;
-
-    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -66,9 +65,8 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         logger.atInfo().log("onCreateView() called");
-        activity.showFab();
         this.activity.setTitle(repositoryName);
-        this.activity.setMenuProvider(this);
+        this.activity.setNavigationHelper(this);
         activity.invalidateOptionsMenu();
         View view = inflater.inflate(R.layout.fragment_repository_details, container, false);
         activity.setFabClick(v -> {
@@ -99,8 +97,8 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
 
     private void loadIssues() {
         logger.atInfo().log("loadIssues() called");
-        String[] repoNameSplit = repositoryName.split("/");
-        activity.getService().getIssuesMoshi(repoNameSplit[0], repoNameSplit[1], "all")
+        List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
+        activity.getService().getIssues(repoNameSplit.get(0), repoNameSplit.get(1), "all")
                 .enqueue(new GetIssueCallback());
     }
 
@@ -110,29 +108,27 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
         MenuItem pinUnpin = menu.findItem(R.id.action_pin_unpin);
         if (isPinned()) {
             pinUnpin.setTitle(R.string.unpin_repository_title);
-            pinUnpin.setIcon(R.drawable.ic_thumbtack_white_24dp);
+            pinUnpin.setIcon(R.drawable.ic_thumbtack_off_white_24dp);
         }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_pin_unpin:
-                if (isPinned()) {
-                    activity.removePinnedRepository(repositoryName);
-                }
-                else {
-                    activity.addPinnedRepository(repositoryName);
-                }
-                activity.loadPinnedRepositories();
-                return true;
+        if (item.getItemId() == R.id.action_pin_unpin) {
+            if (isPinned()) {
+                activity.removePinnedRepository(repositoryName);
+            } else {
+                activity.addPinnedRepository(repositoryName);
+            }
+            activity.loadPinnedRepositories();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     private boolean isPinned() {
-        List<RepositoryMoshi> pinnedRepositories = activity.getPinnedRepositories();
-        for (RepositoryMoshi repository : pinnedRepositories) {
+        List<Repository> pinnedRepositories = activity.getPinnedRepositories();
+        for (Repository repository : pinnedRepositories) {
             if (repository.getFullName().equals(repositoryName)) {
                 return true;
             }
@@ -140,39 +136,38 @@ public class RepositoryDetailsFragment extends Fragment implements OptionsMenuPr
         return false;
     }
 
-    private class GetIssueCallback implements Callback<List<IssueMoshi>> {
+    private class GetIssueCallback implements Callback<List<Issue>> {
         @Override
-        public void onResponse(@NonNull Call<List<IssueMoshi>> call,
-                               @NonNull Response<List<IssueMoshi>> response) {
+        public void onResponse(@NonNull Call<List<Issue>> call,
+                               @NonNull Response<List<Issue>> response) {
             logger.atInfo().log("GetIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestErrorMoshi error = null;
+                APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
                         errorBodyJson = errorBody.string();
                     }
                     Moshi moshi = new Moshi.Builder().build();
-                    JsonAdapter<APIRequestErrorMoshi> jsonAdapter = moshi
-                            .adapter(APIRequestErrorMoshi.class);
+                    JsonAdapter<APIRequestError> jsonAdapter = moshi
+                            .adapter(APIRequestError.class);
                     error = jsonAdapter.fromJson(errorBodyJson);
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     logger.atSevere().withCause(e).log("Error Body string() failed");
                 }
                 if (error != null) {
                     logger.atSevere().log(error.getMessage());
                 }
-            }
-            else {
+            } else {
                 issueAdapter.updateIssues(response.body());
                 swipeRefresh.setRefreshing(false);
+                activity.showFab();
             }
         }
 
         @Override
-        public void onFailure(@NonNull Call<List<IssueMoshi>> call, @NonNull Throwable t) {
+        public void onFailure(@NonNull Call<List<Issue>> call, @NonNull Throwable t) {
             logger.atInfo().log("GetIssueCallback onFailure() called");
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
         }
