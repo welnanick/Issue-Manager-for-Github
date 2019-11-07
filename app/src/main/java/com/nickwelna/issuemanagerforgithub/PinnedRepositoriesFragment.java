@@ -18,6 +18,7 @@ import android.widget.Toast;
 import com.google.common.flogger.FluentLogger;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.SearchResult;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
@@ -48,8 +50,10 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
     RecyclerView repositoryRecyclerView;
     @BindView(R.id.pinned_repository_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
+    @Nullable
     private RepositoryAdapterMoshi repositoryAdapter;
     private NewMainActivity activity;
+    @Nullable
     private EditText searchText;
 
     @Override
@@ -59,7 +63,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
         View view = inflater.inflate(R.layout.fragment_pinned_repositories, container, false);
         ButterKnife.bind(this, view);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
-        String token = preferences.getString(getString(R.string.oauth_token_key), null);
+        @Nullable String token = preferences.getString(getString(R.string.oauth_token_key), null);
         if (token == null) {
             logger.atInfo().log("User not logged in, launching login fragment");
             Navigation.findNavController(activity, R.id.nav_host_fragment)
@@ -78,7 +82,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
             repositoryRecyclerView.setAdapter(repositoryAdapter);
             swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
             swipeRefresh.setOnRefreshListener(() -> {
-                if (!TextUtils.isEmpty(searchText.getText())) {
+                if (searchText != null && !TextUtils.isEmpty(searchText.getText())) {
                     searchRepositories(searchText.getText().toString());
                 } else {
                     activity.loadPinnedRepositories();
@@ -107,7 +111,9 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
         searchText = searchView.findViewById(androidx.appcompat.R.id.search_src_text);
         searchText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                searchRepositories(searchText.getText().toString());
+                if (searchText != null) {
+                    searchRepositories(searchText.getText().toString());
+                }
             }
             return false;
         });
@@ -120,6 +126,9 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
 
             @Override
             public boolean onMenuItemActionExpand(MenuItem item) {
+                if (repositoryAdapter == null) {
+                    return false;
+                }
                 repositoryAdapter.updateRepositories(new ArrayList<>());
                 return true;
             }
@@ -128,7 +137,9 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
 
     @Override
     public void updateProviderData() {
-        repositoryAdapter.updateRepositories(activity.getPinnedRepositories());
+        if (repositoryAdapter != null) {
+            repositoryAdapter.updateRepositories(activity.getPinnedRepositories());
+        }
         swipeRefresh.setRefreshing(false);
     }
 
@@ -145,8 +156,12 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
             imm.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
         }
 
-        activity.getService().searchRepositories(searchQuery)
-                .enqueue(new SearchRepositoryCallback());
+        GitHubService service = activity.getService();
+        if (service == null) {
+            return;
+        }
+        service.searchRepositories(searchQuery)
+               .enqueue(new SearchRepositoryCallback());
     }
 
     private class SearchRepositoryCallback implements Callback<SearchResult> {
@@ -156,7 +171,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
 
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -175,7 +190,9 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
             } else {
                 SearchResult results = response.body();
                 if (results != null) {
-                    repositoryAdapter.updateRepositories(results.getItems());
+                    if (repositoryAdapter != null) {
+                        repositoryAdapter.updateRepositories(results.getItems());
+                    }
                     swipeRefresh.setRefreshing(false);
                 }
             }

@@ -14,6 +14,7 @@ import com.google.common.flogger.FluentLogger;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -98,7 +99,11 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
     private void loadIssues() {
         logger.atInfo().log("loadIssues() called");
         List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
-        activity.getService().getIssues(repoNameSplit.get(0), repoNameSplit.get(1), "all")
+        GitHubService service = activity.getService();
+        if (service == null) {
+            return;
+        }
+        service.getIssues(repoNameSplit.get(0), repoNameSplit.get(1), "all")
                 .enqueue(new GetIssueCallback());
     }
 
@@ -143,7 +148,7 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
             logger.atInfo().log("GetIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {

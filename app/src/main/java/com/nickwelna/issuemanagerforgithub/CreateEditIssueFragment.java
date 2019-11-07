@@ -17,6 +17,7 @@ import com.google.common.flogger.FluentLogger;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueAddEditRequest;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import butterknife.BindView;
@@ -51,8 +53,8 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
     String repositoryName;
     private boolean createIssue;
     private int issueNumber;
-    private String issueName;
-    private String issueBody;
+    @Nullable private String issueName;
+    @Nullable private String issueBody;
     private NewMainActivity activity;
 
     @Override
@@ -109,14 +111,22 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
             IssueAddEditRequest issueRequest = new IssueAddEditRequest();
             issueRequest.setTitle(titleEditText.getText().toString());
             issueRequest.setBody(bodyEditText.getText().toString());
-            activity.getService().addIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueRequest)
+            GitHubService service = activity.getService();
+            if (service == null) {
+                return;
+            }
+            service.addIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueRequest)
                     .enqueue(new AddIssueCallback());
         } else {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             IssueAddEditRequest issueRequest = new IssueAddEditRequest();
             issueRequest.setTitle(titleEditText.getText().toString());
             issueRequest.setBody(bodyEditText.getText().toString());
-            activity.getService().editIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber,
+            GitHubService service = activity.getService();
+            if (service == null) {
+                return;
+            }
+            service.editIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber,
                     issueRequest).enqueue(new EditIssueCallback());
         }
 
@@ -139,7 +149,7 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
             logger.atInfo().log("AddIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -173,7 +183,7 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
         public void onResponse(@NonNull Call<Issue> call, @NonNull Response<Issue> response) {
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {

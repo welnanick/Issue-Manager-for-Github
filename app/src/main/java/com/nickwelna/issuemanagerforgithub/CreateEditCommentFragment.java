@@ -15,6 +15,7 @@ import com.google.common.flogger.FluentLogger;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.CommentAddEditRequest;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -22,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import butterknife.BindView;
@@ -46,7 +48,7 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
     int commentId;
     int issueNumber;
     private boolean createComment;
-    private String commentBody;
+    @Nullable private String commentBody;
     private NewMainActivity activity;
 
     @Override
@@ -98,14 +100,22 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             CommentAddEditRequest commentRequest = new CommentAddEditRequest();
             commentRequest.setBody(bodyEditText.getText().toString());
-            activity.getService().addComment(repoNameSplit.get(0), repoNameSplit
+            GitHubService service = activity.getService();
+            if (service == null) {
+                return;
+            }
+            service.addComment(repoNameSplit.get(0), repoNameSplit
                     .get(1), issueNumber, commentRequest)
                     .enqueue(new AddCommentCallback());
         } else {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             CommentAddEditRequest commentRequest = new CommentAddEditRequest();
             commentRequest.setBody(bodyEditText.getText().toString());
-            activity.getService().editComment(repoNameSplit.get(0), repoNameSplit.get(1), commentId,
+            GitHubService service = activity.getService();
+            if (service == null) {
+                return;
+            }
+            service.editComment(repoNameSplit.get(0), repoNameSplit.get(1), commentId,
                     commentRequest).enqueue(new EditCommentCallback());
         }
 
@@ -128,7 +138,7 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
             logger.atInfo().log("AddCommentCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -161,7 +171,7 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
         public void onResponse(@NonNull Call<Issue> call, @NonNull Response<Issue> response) {
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {

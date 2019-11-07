@@ -20,6 +20,7 @@ import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.GithubUser;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
@@ -98,6 +100,7 @@ public final class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewH
         @BindView(R.id.edit)
         ImageView edit;
         Context context;
+        @Nullable
         String usernameString;
         String repositoryName;
         NewMainActivity activity;
@@ -108,7 +111,10 @@ public final class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewH
                                IssueDetailsFragment issueDetailsFragment) {
             super(itemView);
             this.context = context;
-            this.usernameString = activity.getUser().getLogin();
+            GithubUser user = activity.getUser();
+            if (user != null) {
+                this.usernameString = user.getLogin();
+            }
             this.repositoryName = repositoryName;
             this.activity = activity;
             this.issueDetailsFragment = issueDetailsFragment;
@@ -153,12 +159,15 @@ public final class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewH
                                 .setPositiveButton(R.string.yes_button_text, (dialog, which) -> {
                                     List<String> repoNameSplit = Splitter.on('/')
                                                                          .splitToList(repositoryName);
-                                    activity.getService()
-                                            .deleteComment(
-                                                    repoNameSplit.get(0),
-                                                    repoNameSplit.get(1),
-                                                    comment.getId())
-                                            .enqueue(new DeleteIssueCallback(dialog, issueDetailsFragment));
+                                    GitHubService service = activity.getService();
+                                    if (service == null) {
+                                        return;
+                                    }
+                                    service.deleteComment(
+                                            repoNameSplit.get(0),
+                                            repoNameSplit.get(1),
+                                            comment.getId())
+                                           .enqueue(new DeleteIssueCallback(dialog, issueDetailsFragment));
                                 })
                                 .setNegativeButton(
                                         R.string.no_button_text,
@@ -176,11 +185,14 @@ public final class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewH
             String datePosted = comment.getCreatedAt();
             SimpleDateFormat format = new SimpleDateFormat(context.getString(R.string.date_format));
             format.setTimeZone(TimeZone.getTimeZone(context.getString(R.string.utc_timezonr)));
-            Date date = null;
+            @Nullable Date date = null;
             try {
                 date = format.parse(datePosted);
             } catch (ParseException e) {
                 logger.atSevere().withCause(e).log("Failed to parse date");
+            }
+            if (date == null) {
+                return "";
             }
             String result = (String) DateUtils.getRelativeTimeSpanString(date.getTime(), new Date()
                     .getTime(), 0, FORMAT_ABBREV_MONTH);
@@ -212,7 +224,7 @@ public final class CommentAdapterMoshi extends RecyclerView.Adapter<CommentViewH
 
                 if (response.code() == 401) {
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestError error = null;
+                    @Nullable APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {

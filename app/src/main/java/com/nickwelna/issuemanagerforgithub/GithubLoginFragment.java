@@ -23,6 +23,7 @@ import com.google.firebase.auth.GithubAuthProvider;
 import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationRequest;
 import com.nickwelna.issuemanagerforgithub.models.AuthorizationResponse;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.nickwelna.issuemanagerforgithub.networking.ServiceGenerator;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
@@ -135,7 +136,11 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
                 .adapter(AuthorizationRequest.class);
         String test = jsonAdapter.toJson(new AuthorizationRequest());
         logger.atInfo().log(test);
-        activity.getService().authorizeUser(headers, new AuthorizationRequest())
+        GitHubService service = activity.getService();
+        if (service == null) {
+            return;
+        }
+        service.authorizeUser(headers, new AuthorizationRequest())
                 .enqueue(new LoginCallback(twoFactorVisible));
 
     }
@@ -193,7 +198,7 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
                         twoFactorInputLayout.setVisibility(View.VISIBLE);
                     }
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestError error = null;
+                    @Nullable APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {

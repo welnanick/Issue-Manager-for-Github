@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -70,10 +71,10 @@ public final class NewMainActivity extends AppCompatActivity {
     NavigationView navView;
     private FirebaseDatabase database = FirebaseDatabase.getInstance();
     private FirebaseAuth auth = FirebaseAuth.getInstance();
-    private DatabaseReference userDataReference;
-    private GitHubService service;
-    private GithubUser user;
-    private NavigationHelper navigationHelper;
+    @Nullable private DatabaseReference userDataReference;
+    @Nullable private GitHubService service;
+    @Nullable private GithubUser user;
+    @Nullable private NavigationHelper navigationHelper;
     private List<Repository> pinnedRepositories = new ArrayList<>();
     private Map<String, List<Integer>> pinnedIssueMenuItems = new HashMap<>();
     private NavController navController;
@@ -109,6 +110,7 @@ public final class NewMainActivity extends AppCompatActivity {
         return auth;
     }
 
+    @Nullable
     public GitHubService getService() {
         return service;
     }
@@ -117,17 +119,22 @@ public final class NewMainActivity extends AppCompatActivity {
         this.service = service;
     }
 
+    @Nullable
     public GithubUser getUser() {
         return user;
     }
 
     public void loadUser() {
+        if (service == null) {
+            logger.atWarning().log("Service is null");
+            return;
+        }
         service.getAuthorizedUser().enqueue(new GetUserCallback());
     }
 
     public void removePinnedIssue(String repositoryName, int issue) {
         int removeIndex = -1;
-        List<Integer> pinnedIssues = pinnedIssueMenuItems.get(repositoryName);
+        @Nullable List<Integer> pinnedIssues = pinnedIssueMenuItems.get(repositoryName);
         if (pinnedIssues == null) {
             return;
         }
@@ -140,6 +147,10 @@ public final class NewMainActivity extends AppCompatActivity {
             return;
         }
         pinnedIssues.remove(removeIndex);
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         userDataReference.child("pinned_issues").child(repositoryName).setValue(pinnedIssues);
         Toast.makeText(this, R.string.issue_unpinned_toast, Toast.LENGTH_LONG).show();
         loadPinnedIssues();
@@ -147,12 +158,16 @@ public final class NewMainActivity extends AppCompatActivity {
     }
 
     public void addPinnedIssue(String repositoryName, int number) {
-        List<Integer> pinnedIssues = pinnedIssueMenuItems.get(repositoryName);
+        @Nullable List<Integer> pinnedIssues = pinnedIssueMenuItems.get(repositoryName);
         if (pinnedIssues == null) {
             pinnedIssues = new ArrayList<>();
         }
         pinnedIssues.add(number);
         Collections.sort(pinnedIssues);
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         userDataReference.child("pinned_issues").child(repositoryName).setValue(pinnedIssues);
         Toast.makeText(this, R.string.issue_pinned_toast, Toast.LENGTH_LONG).show();
         loadPinnedIssues();
@@ -183,6 +198,9 @@ public final class NewMainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (navigationHelper == null) {
+            return false;
+        }
         return navigationHelper.onOptionsItemSelected(item);
     }
 
@@ -201,6 +219,10 @@ public final class NewMainActivity extends AppCompatActivity {
             return;
         }
         pinnedRepositories.remove(removeIndex);
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         userDataReference.child("pinned_repos").setValue(convertToStringList(pinnedRepositories));
         invalidateOptionsMenu();
         Toast.makeText(this, R.string.repository_unpinned_toast, Toast.LENGTH_LONG).show();
@@ -211,6 +233,10 @@ public final class NewMainActivity extends AppCompatActivity {
         repository.setFullName(repositoryName);
         pinnedRepositories.add(repository);
         List<String> repositoryStrings = convertToStringList(pinnedRepositories);
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         userDataReference.child("pinned_repos").setValue(repositoryStrings);
         invalidateOptionsMenu();
         Toast.makeText(this, R.string.repository_pinned_toast, Toast.LENGTH_LONG).show();
@@ -238,6 +264,10 @@ public final class NewMainActivity extends AppCompatActivity {
 
     public void loadPinnedRepositories() {
         logger.atInfo().log("loadPinnedRepositories() called");
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         DatabaseReference pinnedRepos = userDataReference.child("pinned_repos");
         pinnedRepos.addListenerForSingleValueEvent(new RepositoryValueEventListener());
     }
@@ -246,6 +276,10 @@ public final class NewMainActivity extends AppCompatActivity {
 
         pinnedIssueMenuItems = new HashMap<>();
 
+        if (userDataReference == null) {
+            logger.atWarning().log("userDataReference is null");
+            return;
+        }
         DatabaseReference pinnedIssuesRef = userDataReference.child("pinned_issues");
         ValueEventListener pinnedIssueListener = new IssueValueEventListener();
         pinnedIssuesRef.addListenerForSingleValueEvent(pinnedIssueListener);
@@ -273,7 +307,7 @@ public final class NewMainActivity extends AppCompatActivity {
             logger.atInfo().log("LoadIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -307,7 +341,7 @@ public final class NewMainActivity extends AppCompatActivity {
                                @NonNull Response<GithubUser> response) {
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -328,6 +362,9 @@ public final class NewMainActivity extends AppCompatActivity {
                 TextView username = headerLayout.findViewById(R.id.username);
                 ImageView avatar = headerLayout.findViewById(R.id.avatar);
                 Button logoutButton = headerLayout.findViewById(R.id.logout_text);
+                if (user == null) {
+                    return;
+                }
                 username.setText(user.getLogin());
                 Glide.with(headerLayout).load(user.getAvatarUrl())
                      .apply(RequestOptions.circleCropTransform()).into(avatar);
@@ -358,6 +395,9 @@ public final class NewMainActivity extends AppCompatActivity {
                 Repository temp = new Repository();
                 temp.setFullName(pinnedRepoSnapshot.getValue(String.class));
                 pinnedRepositories.add(temp);
+            }
+            if (navigationHelper == null) {
+                return;
             }
             navigationHelper.updateProviderData();
         }
@@ -400,6 +440,9 @@ public final class NewMainActivity extends AppCompatActivity {
                         MenuItem issueMenuItem = navView.getMenu().add(null);
                         View issueView = getLayoutInflater()
                                 .inflate(R.layout.pinned_issue_list_item, navView, false);
+                        if(service == null) {
+                            continue;
+                        }
                         service.getIssue(owner, repositoryName, issueNumber)
                                .enqueue(new GetIssueCallback(issueView));
                         ((TextView) issueView.findViewById(R.id.issue_number))

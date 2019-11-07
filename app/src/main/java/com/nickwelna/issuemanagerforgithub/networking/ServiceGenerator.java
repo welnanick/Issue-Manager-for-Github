@@ -2,6 +2,7 @@ package com.nickwelna.issuemanagerforgithub.networking;
 
 import android.text.TextUtils;
 
+import androidx.annotation.Nullable;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -22,7 +23,7 @@ public final class ServiceGenerator {
         return createService(null, null);
     }
 
-    public static GitHubService createService(String username, String password) {
+    public static GitHubService createService(@Nullable String username, @Nullable String password) {
         if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(password)) {
             String authToken = Credentials.basic(username, password);
             return createService(authToken);
@@ -30,7 +31,7 @@ public final class ServiceGenerator {
         return createService(null);
     }
 
-    public static GitHubService createService(final String authToken) {
+    public static GitHubService createService(@Nullable final String authToken) {
         if (!TextUtils.isEmpty(authToken)) {
             AuthenticationInterceptor interceptor = new AuthenticationInterceptor(authToken);
             if (!httpClient.interceptors().contains(interceptor)) {

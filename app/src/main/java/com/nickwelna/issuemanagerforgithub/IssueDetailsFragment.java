@@ -15,6 +15,7 @@ import com.nickwelna.issuemanagerforgithub.models.APIRequestError;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 import com.nickwelna.issuemanagerforgithub.models.IssueCloseOpenRequest;
 import com.nickwelna.issuemanagerforgithub.models.IssueCommentCommon;
+import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 
@@ -48,6 +49,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     String repositoryName;
     int issueNumber;
 
+    @Nullable
     Issue issue;
     private CommentAdapterMoshi commentAdapter;
 
@@ -94,18 +96,24 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     private void loadIssue() {
         logger.atInfo().log("loadIssue() called");
         List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
-        activity.getService()
-                .getIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber)
-                .enqueue(new LoadIssueCallback());
+        GitHubService service = activity.getService();
+        if (service == null) {
+            return;
+        }
+        service.getIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber)
+               .enqueue(new LoadIssueCallback());
     }
 
     void loadComments() {
         swipeRefresh.setRefreshing(true);
         logger.atInfo().log("loadComments() called");
         List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
-        activity.getService()
-                .getComments(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber)
-                .enqueue(new GetCommentsCallback());
+        GitHubService service = activity.getService();
+        if (service == null) {
+            return;
+        }
+        service.getComments(repoNameSplit.get(0), repoNameSplit.get(1), issueNumber)
+               .enqueue(new GetCommentsCallback());
 
     }
 
@@ -116,6 +124,10 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         MenuItem closeOpen = menu.findItem(R.id.action_close_open);
         MenuItem lockUnlock = menu.findItem(R.id.action_lock_unlock);
         MenuItem pinUnpin = menu.findItem(R.id.action_pin_unpin);
+        if (issue == null) {
+            logger.atWarning().log("issue is null");
+            return;
+        }
         if (issue.getState().equals(getString(R.string.issue_state_closed))) {
             closeOpen.setTitle(R.string.open_issue_titile);
         }
@@ -131,6 +143,10 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
+        if (issue == null) {
+            logger.atWarning().log("issue is null");
+            return false;
+        }
         switch (item.getItemId()) {
             case R.id.action_pin_unpin:
                 if (isPinned()) {
@@ -143,20 +159,25 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
             case R.id.action_lock_unlock:
                 swipeRefresh.setRefreshing(true);
                 if (issue.isLocked()) {
-                    activity.getService()
-                            .unlockIssue(
-                                    repoNameSplit.get(0),
-                                    repoNameSplit.get(1),
-                                    issue.getNumber())
-                            .enqueue(new UnlockIssueCallback());
+                    GitHubService service = activity.getService();
+                    if (service == null) {
+                        return false;
+                    }
+                    service.unlockIssue(
+                            repoNameSplit.get(0),
+                            repoNameSplit.get(1),
+                            issue.getNumber())
+                           .enqueue(new UnlockIssueCallback());
                 } else {
-
-                    activity.getService()
-                            .lockIssue(
-                                    repoNameSplit.get(0),
-                                    repoNameSplit.get(1),
-                                    issue.getNumber())
-                            .enqueue(new LockIssueCallback());
+                    GitHubService service = activity.getService();
+                    if (service == null) {
+                        return false;
+                    }
+                    service.lockIssue(
+                            repoNameSplit.get(0),
+                            repoNameSplit.get(1),
+                            issue.getNumber())
+                           .enqueue(new LockIssueCallback());
 
                 }
                 return true;
@@ -165,16 +186,22 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
                 IssueCloseOpenRequest closeOpenRequest = new IssueCloseOpenRequest();
                 if (issue.getState().equals(getString(R.string.issue_state_closed))) {
                     closeOpenRequest.setState(getString(R.string.issue_state_open));
-                    activity.getService()
-                            .openCloseIssue(repoNameSplit.get(0), repoNameSplit.get(1),
-                                    issue.getNumber(), closeOpenRequest)
-                            .enqueue(new IssueOpenCloseCallback(R.string.issue_opened_toast));
+                    GitHubService service = activity.getService();
+                    if (service == null) {
+                        return false;
+                    }
+                    service.openCloseIssue(repoNameSplit.get(0), repoNameSplit.get(1),
+                            issue.getNumber(), closeOpenRequest)
+                           .enqueue(new IssueOpenCloseCallback(R.string.issue_opened_toast));
                 } else {
                     closeOpenRequest.setState(getString(R.string.issue_state_closed));
-                    activity.getService()
-                            .openCloseIssue(repoNameSplit.get(0), repoNameSplit.get(1),
-                                    issue.getNumber(), closeOpenRequest)
-                            .enqueue(new IssueOpenCloseCallback(R.string.issue_closed_toast));
+                    GitHubService service = activity.getService();
+                    if (service == null) {
+                        return false;
+                    }
+                    service.openCloseIssue(repoNameSplit.get(0), repoNameSplit.get(1),
+                            issue.getNumber(), closeOpenRequest)
+                           .enqueue(new IssueOpenCloseCallback(R.string.issue_closed_toast));
                 }
                 return true;
         }
@@ -189,8 +216,12 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     }
 
     private boolean isPinned() {
-        List<Integer> pinnedIssues = activity.getPinnedIssues().get(repositoryName);
+        @Nullable List<Integer> pinnedIssues = activity.getPinnedIssues().get(repositoryName);
         if (pinnedIssues == null) {
+            return false;
+        }
+        if (issue == null) {
+            logger.atWarning().log("issue is null");
             return false;
         }
         return pinnedIssues.contains(issue.getNumber());
@@ -203,7 +234,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
             logger.atInfo().log("GetCommentsCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -244,7 +275,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
             logger.atInfo().log("LoadIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
-                APIRequestError error = null;
+                @Nullable APIRequestError error = null;
                 try {
                     String errorBodyJson = "";
                     if (errorBody != null) {
@@ -289,7 +320,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
                 default:
                     swipeRefresh.setRefreshing(false);
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestError error = null;
+                    @Nullable APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {
@@ -331,7 +362,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
                 default:
                     swipeRefresh.setRefreshing(false);
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestError error = null;
+                    @Nullable APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {
@@ -379,7 +410,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
                 default:
                     swipeRefresh.setRefreshing(false);
                     ResponseBody errorBody = response.errorBody();
-                    APIRequestError error = null;
+                    @Nullable APIRequestError error = null;
                     try {
                         String errorBodyJson = "";
                         if (errorBody != null) {

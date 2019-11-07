@@ -59,6 +59,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:logging-interceptor:4.2.2'
 
     compileOnly 'com.jakewharton.nopen:nopen-annotations:1.0.1'
+    annotationProcessor "com.uber.nullaway:nullaway:0.7.8"
     errorprone "com.google.errorprone:error_prone_core:2.3.3"
     errorprone 'com.jakewharton.nopen:nopen-checker:1.0.1'
     errorproneJavac "com.google.errorprone:javac:9+181-r4173-1"
@@ -66,9 +67,17 @@ dependencies {
     implementation 'com.google.guava:guava:28.1-android'
 }
 
+import net.ltgt.gradle.errorprone.CheckSeverity
+
 android.applicationVariants.all { variant ->
     variant.javaCompileProvider.configure {
         options.errorprone.disableWarningsInGeneratedCode = true
+        options.errorprone {
+            check("NullAway", CheckSeverity.WARN)
+            option("NullAway:AnnotatedPackages", "com.nickwelna")
+            option("NullAway:UnannotatedSubPackages", "com.nickwelna.issuemanagerforgithub.models")
+            option("NullAway:ExcludedFieldAnnotations", "butterknife")
+        }
     }
 }
 
