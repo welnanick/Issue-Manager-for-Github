@@ -2,6 +2,7 @@ package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
@@ -44,15 +45,16 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
     TextInputEditText bodyEditText;
     @BindView(R.id.submit_button)
     Button submitButton;
-    String repositoryName;
-    int commentId;
-    int issueNumber;
+    private String repositoryName;
+    private int commentId;
+    private int issueNumber;
     private boolean createComment;
-    @Nullable private String commentBody;
+    @Nullable
+    private String commentBody;
     private NewMainActivity activity;
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         this.activity = (NewMainActivity) context;
     }
@@ -61,6 +63,9 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle arguments = getArguments();
+        if (arguments == null) {
+            return;
+        }
         createComment = arguments.getBoolean(CREATE_COMMENT);
         if (!createComment) {
             commentBody = arguments.getString(COMMENT_BODY);
@@ -72,7 +77,7 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         if (createComment) {
             this.activity.setTitle(R.string.create_comment_title);
@@ -88,29 +93,31 @@ public final class CreateEditCommentFragment extends Fragment implements Navigat
             bodyEditText.setText(commentBody);
         }
 
-        submitButton.setOnClickListener(v -> {
-            submitComment();
-        });
+        submitButton.setOnClickListener(v -> submitComment());
         return view;
     }
 
     private void submitComment() {
 
+        Editable bodyText = bodyEditText.getText();
+        if (bodyText == null) {
+            return;
+        }
         if (createComment) {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             CommentAddEditRequest commentRequest = new CommentAddEditRequest();
-            commentRequest.setBody(bodyEditText.getText().toString());
+            commentRequest.setBody(bodyText.toString());
             GitHubService service = activity.getService();
             if (service == null) {
                 return;
             }
             service.addComment(repoNameSplit.get(0), repoNameSplit
                     .get(1), issueNumber, commentRequest)
-                    .enqueue(new AddCommentCallback());
+                   .enqueue(new AddCommentCallback());
         } else {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             CommentAddEditRequest commentRequest = new CommentAddEditRequest();
-            commentRequest.setBody(bodyEditText.getText().toString());
+            commentRequest.setBody(bodyText.toString());
             GitHubService service = activity.getService();
             if (service == null) {
                 return;

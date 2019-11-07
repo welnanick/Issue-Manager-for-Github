@@ -2,6 +2,7 @@ package com.nickwelna.issuemanagerforgithub;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -50,15 +51,17 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
     TextInputEditText titleEditText;
     @BindView(R.id.body_edit_text)
     TextInputEditText bodyEditText;
-    String repositoryName;
+    private String repositoryName;
     private boolean createIssue;
     private int issueNumber;
-    @Nullable private String issueName;
-    @Nullable private String issueBody;
+    @Nullable
+    private String issueName;
+    @Nullable
+    private String issueBody;
     private NewMainActivity activity;
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         this.activity = (NewMainActivity) context;
     }
@@ -67,6 +70,9 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle arguments = getArguments();
+        if (arguments == null) {
+            return;
+        }
         createIssue = arguments.getBoolean(CREATE_ISSUE);
         if (!createIssue) {
             issueNumber = arguments.getInt(ISSUE_NUMBER);
@@ -77,7 +83,7 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         if (createIssue) {
             this.activity.setTitle(R.string.create_issue_title);
@@ -95,7 +101,11 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
         }
 
         submitButton.setOnClickListener(v -> {
-            if (TextUtils.isEmpty(titleEditText.getText().toString())) {
+            Editable titleText = titleEditText.getText();
+            if (titleText == null) {
+                return;
+            }
+            if (TextUtils.isEmpty(titleText.toString())) {
                 titleInputLayout.setError(getString(R.string.issue_title_error_text));
             } else {
                 submitComment();
@@ -106,22 +116,27 @@ public final class CreateEditIssueFragment extends Fragment implements Navigatio
 
     private void submitComment() {
 
+        Editable titleText = titleEditText.getText();
+        Editable bodyText = bodyEditText.getText();
+        if (titleText == null || bodyText == null) {
+            return;
+        }
         if (createIssue) {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             IssueAddEditRequest issueRequest = new IssueAddEditRequest();
-            issueRequest.setTitle(titleEditText.getText().toString());
-            issueRequest.setBody(bodyEditText.getText().toString());
+            issueRequest.setTitle(titleText.toString());
+            issueRequest.setBody(bodyText.toString());
             GitHubService service = activity.getService();
             if (service == null) {
                 return;
             }
             service.addIssue(repoNameSplit.get(0), repoNameSplit.get(1), issueRequest)
-                    .enqueue(new AddIssueCallback());
+                   .enqueue(new AddIssueCallback());
         } else {
             List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
             IssueAddEditRequest issueRequest = new IssueAddEditRequest();
-            issueRequest.setTitle(titleEditText.getText().toString());
-            issueRequest.setBody(bodyEditText.getText().toString());
+            issueRequest.setTitle(titleText.toString());
+            issueRequest.setBody(bodyText.toString());
             GitHubService service = activity.getService();
             if (service == null) {
                 return;

@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.nickwelna.issuemanagerforgithub.IssueAdapterMoshi.IssueViewHolderMoshi;
 import com.nickwelna.issuemanagerforgithub.models.Issue;
 
 import java.util.ArrayList;
@@ -20,24 +19,24 @@ import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public final class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolderMoshi> {
+public final class IssueAdapter extends RecyclerView.Adapter<IssueAdapter.IssueViewHolder> {
     private List<Issue> issues = new ArrayList<>();
-    private String repositoryName;
+    private final String repositoryName;
 
-    IssueAdapterMoshi(String repositoryName) {
+    IssueAdapter(String repositoryName) {
         this.repositoryName = repositoryName;
     }
 
     @NonNull
     @Override
-    public IssueViewHolderMoshi onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public IssueViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View itemView = inflater.inflate(R.layout.issue_list_item, parent, false);
-        return new IssueViewHolderMoshi(itemView, parent.getContext(), repositoryName);
+        return new IssueViewHolder(itemView, parent.getContext(), repositoryName);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull IssueViewHolderMoshi holder, int position) {
+    public void onBindViewHolder(@NonNull IssueViewHolder holder, int position) {
         holder.bind(issues.get(position));
     }
 
@@ -51,7 +50,7 @@ public final class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolde
         notifyDataSetChanged();
     }
 
-    static final class IssueViewHolderMoshi extends RecyclerView.ViewHolder {
+    static final class IssueViewHolder extends RecyclerView.ViewHolder {
         @BindView(R.id.issue_title)
         TextView issueTitle;
         @BindView(R.id.issue_number)
@@ -61,17 +60,17 @@ public final class IssueAdapterMoshi extends RecyclerView.Adapter<IssueViewHolde
         @BindView(R.id.issue_status)
         TextView issueStatus;
 
-        Context context;
-        String repositoryName;
+        final Context context;
+        final String repositoryName;
 
-        IssueViewHolderMoshi(@NonNull View itemView, Context context, String repositoryName) {
+        IssueViewHolder(@NonNull View itemView, Context context, String repositoryName) {
             super(itemView);
             this.context = context;
             this.repositoryName = repositoryName;
             ButterKnife.bind(this, itemView);
         }
 
-        public void bind(Issue issue) {
+        void bind(Issue issue) {
             issueTitle.setText(issue.getTitle());
             issueNumber.setText(context.getString(R.string.issue_number_format, issue.getNumber()));
             issueComments.setText(context.getResources()

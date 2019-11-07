@@ -11,19 +11,15 @@ import retrofit2.converter.moshi.MoshiConverterFactory;
 public final class ServiceGenerator {
 
     private static final String API_BASE_URL = "https://api.github.com";
-    private static OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-    private static Retrofit.Builder builder = new Retrofit.Builder().baseUrl(API_BASE_URL)
-                                                                    .addConverterFactory(
-                                                                            MoshiConverterFactory
-                                                                                    .create());
-    //            .addConverterFactory(GsonConverterFactory.create());
+    private static final OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+    private static final Retrofit.Builder builder = new Retrofit.Builder().baseUrl(API_BASE_URL)
+                                                                          .addConverterFactory(
+                                                                                  MoshiConverterFactory
+                                                                                          .create());
     private static Retrofit retrofit = builder.build();
 
-    public static GitHubService createService() {
-        return createService(null, null);
-    }
-
-    public static GitHubService createService(@Nullable String username, @Nullable String password) {
+    public static GitHubService createService(@Nullable String username,
+                                              @Nullable String password) {
         if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(password)) {
             String authToken = Credentials.basic(username, password);
             return createService(authToken);

@@ -18,6 +18,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.common.flogger.FluentLogger;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -30,6 +31,8 @@ import com.nickwelna.issuemanagerforgithub.models.Repository;
 import com.nickwelna.issuemanagerforgithub.networking.GitHubService;
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -61,20 +64,24 @@ public final class NewMainActivity extends AppCompatActivity {
     public static final String REPOSITORY_NAME = "repository_name";
     public static final String CURRENT_ISSUE = "current_issue";
     private static final FluentLogger logger = FluentLogger.forEnclosingClass();
+    private final FirebaseDatabase database = FirebaseDatabase.getInstance();
+    private final FirebaseAuth auth = FirebaseAuth.getInstance();
     @BindView(R.id.fab)
     FloatingActionButton fab;
     @BindView(R.id.drawer_layout)
     DrawerLayout drawerLayout;
     @BindView(R.id.toolbar)
     Toolbar toolbar;
-    AppBarConfiguration appBarConfiguration;
-    NavigationView navView;
-    private FirebaseDatabase database = FirebaseDatabase.getInstance();
-    private FirebaseAuth auth = FirebaseAuth.getInstance();
-    @Nullable private DatabaseReference userDataReference;
-    @Nullable private GitHubService service;
-    @Nullable private GithubUser user;
-    @Nullable private NavigationHelper navigationHelper;
+    private AppBarConfiguration appBarConfiguration;
+    private NavigationView navView;
+    @Nullable
+    private DatabaseReference userDataReference;
+    @Nullable
+    private GitHubService service;
+    @Nullable
+    private GithubUser user;
+    @Nullable
+    private NavigationHelper navigationHelper;
     private List<Repository> pinnedRepositories = new ArrayList<>();
     private Map<String, List<Integer>> pinnedIssueMenuItems = new HashMap<>();
     private NavController navController;
@@ -103,7 +110,11 @@ public final class NewMainActivity extends AppCompatActivity {
     }
 
     public void updateUserDataReference() {
-        userDataReference = database.getReference("users").child(auth.getCurrentUser().getUid());
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+        userDataReference = database.getReference("users").child(user.getUid());
     }
 
     public FirebaseAuth getAuth() {
@@ -115,7 +126,7 @@ public final class NewMainActivity extends AppCompatActivity {
         return service;
     }
 
-    public void setService(GitHubService service) {
+    public void setService(@Nullable GitHubService service) {
         this.service = service;
     }
 
@@ -197,14 +208,14 @@ public final class NewMainActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(@NotNull MenuItem item) {
         if (navigationHelper == null) {
             return false;
         }
         return navigationHelper.onOptionsItemSelected(item);
     }
 
-    public void setNavigationHelper(NavigationHelper navigationHelper) {
+    public void setNavigationHelper(@Nullable NavigationHelper navigationHelper) {
         this.navigationHelper = navigationHelper;
     }
 
@@ -296,14 +307,14 @@ public final class NewMainActivity extends AppCompatActivity {
 
     private static class GetIssueCallback implements Callback<Issue> {
 
-        View issueView;
+        final View issueView;
 
         GetIssueCallback(View issueView) {
             this.issueView = issueView;
         }
 
         @Override
-        public void onResponse(Call<Issue> call, Response<Issue> response) {
+        public void onResponse(@NotNull Call<Issue> call, Response<Issue> response) {
             logger.atInfo().log("LoadIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
@@ -325,12 +336,15 @@ public final class NewMainActivity extends AppCompatActivity {
                 }
             } else {
                 Issue issue = response.body();
+                if (issue == null) {
+                    return;
+                }
                 ((TextView) issueView.findViewById(R.id.issue_title)).setText(issue.getTitle());
             }
         }
 
         @Override
-        public void onFailure(Call<Issue> call, Throwable t) {
+        public void onFailure(@NotNull Call<Issue> call, @NotNull Throwable t) {
 
         }
     }
@@ -436,11 +450,14 @@ public final class NewMainActivity extends AppCompatActivity {
                     //issues pinned
                     for (DataSnapshot issue : ownerRepositories.getChildren()) {
                         Integer issueNumber = issue.getValue(Integer.class);
+                        if (issueNumber == null) {
+                            return;
+                        }
                         pinnedIssues.add(issueNumber);
                         MenuItem issueMenuItem = navView.getMenu().add(null);
                         View issueView = getLayoutInflater()
                                 .inflate(R.layout.pinned_issue_list_item, navView, false);
-                        if(service == null) {
+                        if (service == null) {
                             continue;
                         }
                         service.getIssue(owner, repositoryName, issueNumber)

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.text.Editable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -101,7 +102,7 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
     }
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         logger.atInfo().log("onAttach() called");
         super.onAttach(context);
         this.activity = (NewMainActivity) context;
@@ -110,8 +111,13 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
 
     private void authorizeUser() {
         logger.atInfo().log("authorizeUser() called");
-        String userNameText = usernameEditText.getText().toString();
-        String passwordText = passwordEditText.getText().toString();
+        Editable usernameText = usernameEditText.getText();
+        Editable passwordEditableText = passwordEditText.getText();
+        if (usernameText == null || passwordEditableText == null) {
+            return;
+        }
+        String userNameText = usernameText.toString();
+        String passwordText = passwordEditableText.toString();
         if (TextUtils.isEmpty(userNameText) || TextUtils.isEmpty(passwordText)) {
             Toast.makeText(activity, "Blank Username/Password", Toast.LENGTH_LONG).show();
             return;
@@ -119,15 +125,23 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
         InputMethodManager imm = (InputMethodManager) activity
                 .getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null && imm.isAcceptingText()) {
-            imm.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
+            View currentFocus = activity.getCurrentFocus();
+            if (currentFocus == null) {
+                return;
+            }
+            imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
         }
         activity.setService(ServiceGenerator.createService(userNameText, passwordText));
         Map<String, String> headers = new HashMap<>();
         boolean twoFactorVisible = twoFactorInputLayout.getVisibility() == View.VISIBLE;
         if (twoFactorVisible) {
             twoFactorInputLayout.setVisibility(View.GONE);
+            Editable twoFactorText = twoFactorEditText.getText();
+            if (twoFactorText == null) {
+                return;
+            }
             headers.put(getString(R.string.two_factor_header),
-                    twoFactorEditText.getText().toString());
+                    twoFactorText.toString());
         }
         group.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
@@ -141,7 +155,7 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
             return;
         }
         service.authorizeUser(headers, new AuthorizationRequest())
-                .enqueue(new LoginCallback(twoFactorVisible));
+               .enqueue(new LoginCallback(twoFactorVisible));
 
     }
 
@@ -170,7 +184,7 @@ public final class GithubLoginFragment extends Fragment implements NavigationHel
 
     private class LoginCallback implements Callback<AuthorizationResponse> {
 
-        private boolean twoFactorVisible;
+        private final boolean twoFactorVisible;
 
         LoginCallback(boolean twoFactorVisible) {
             this.twoFactorVisible = twoFactorVisible;

@@ -43,7 +43,7 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
     RecyclerView issueRecyclerView;
     @BindView(R.id.repository_issues_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
-    private IssueAdapterMoshi issueAdapter;
+    private IssueAdapter issueAdapter;
     private String repositoryName;
     private NewMainActivity activity;
 
@@ -52,11 +52,14 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
         super.onCreate(savedInstanceState);
         logger.atInfo().log("onCreate() called");
         Bundle arguments = getArguments();
+        if (arguments == null) {
+            return;
+        }
         repositoryName = arguments.getString(NewMainActivity.REPOSITORY_NAME);
     }
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         logger.atInfo().log("onAttach() called");
         this.activity = (NewMainActivity) context;
@@ -80,7 +83,7 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
         ButterKnife.bind(this, view);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(activity);
         issueRecyclerView.setLayoutManager(linearLayoutManager);
-        issueAdapter = new IssueAdapterMoshi(repositoryName);
+        issueAdapter = new IssueAdapter(repositoryName);
         issueRecyclerView.setAdapter(issueAdapter);
         swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
         swipeRefresh.setOnRefreshListener(this::loadIssues);
@@ -104,7 +107,7 @@ public final class RepositoryDetailsFragment extends Fragment implements Navigat
             return;
         }
         service.getIssues(repoNameSplit.get(0), repoNameSplit.get(1), "all")
-                .enqueue(new GetIssueCallback());
+               .enqueue(new GetIssueCallback());
     }
 
     @Override

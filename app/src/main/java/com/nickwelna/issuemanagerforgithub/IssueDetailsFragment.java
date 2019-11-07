@@ -45,16 +45,17 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     RecyclerView commentRecyclerView;
     @BindView(R.id.issue_details_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
-    NewMainActivity activity;
-    String repositoryName;
-    int issueNumber;
+    private NewMainActivity activity;
+    private String repositoryName;
+    private int issueNumber;
 
     @Nullable
+    private
     Issue issue;
-    private CommentAdapterMoshi commentAdapter;
+    private CommentAdapter commentAdapter;
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         logger.atInfo().log("onAttach() called");
         super.onAttach(context);
         activity = (NewMainActivity) context;
@@ -65,6 +66,9 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         super.onCreate(savedInstanceState);
         logger.atInfo().log("onCreate() called");
         Bundle arguments = getArguments();
+        if (arguments == null) {
+            return;
+        }
         repositoryName = arguments.getString(NewMainActivity.REPOSITORY_NAME);
         issueNumber = arguments.getInt(NewMainActivity.CURRENT_ISSUE);
     }
@@ -84,7 +88,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         });
         ButterKnife.bind(this, view);
         commentRecyclerView.setLayoutManager(new LinearLayoutManager(activity));
-        commentAdapter = new CommentAdapterMoshi(activity, repositoryName, this);
+        commentAdapter = new CommentAdapter(activity, repositoryName, this);
         commentRecyclerView.setAdapter(commentAdapter);
         swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
         swipeRefresh.setOnRefreshListener(this::loadIssue);
@@ -141,7 +145,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         List<String> repoNameSplit = Splitter.on('/').splitToList(repositoryName);
         if (issue == null) {
             logger.atWarning().log("issue is null");
@@ -253,6 +257,9 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
             } else {
 
                 List<IssueCommentCommon> comments = response.body();
+                if (comments == null) {
+                    return;
+                }
                 comments.add(0, issue);
                 commentAdapter.updateComments(comments);
                 swipeRefresh.setRefreshing(false);
@@ -271,7 +278,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
 
     private class LoadIssueCallback implements Callback<Issue> {
         @Override
-        public void onResponse(Call<Issue> call, Response<Issue> response) {
+        public void onResponse(@NonNull Call<Issue> call, Response<Issue> response) {
             logger.atInfo().log("LoadIssueCallback onResponse() called");
             if (response.code() == 401) {
                 ResponseBody errorBody = response.errorBody();
@@ -293,6 +300,9 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
                 }
             } else {
                 issue = response.body();
+                if (issue == null) {
+                    return;
+                }
                 activity.setTitle(issue.getTitle());
                 activity.setNavigationHelper(IssueDetailsFragment.this);
                 activity.invalidateOptionsMenu();
@@ -301,7 +311,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         }
 
         @Override
-        public void onFailure(Call<Issue> call, Throwable t) {
+        public void onFailure(@NonNull Call<Issue> call, @NonNull Throwable t) {
 
         }
     }
@@ -309,7 +319,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     private class UnlockIssueCallback implements Callback<Issue> {
 
         @Override
-        public void onResponse(Call<Issue> call, Response<Issue> response) {
+        public void onResponse(@NonNull Call<Issue> call, Response<Issue> response) {
             switch (response.code()) {
                 case 204:
                     loadIssue();
@@ -342,7 +352,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         }
 
         @Override
-        public void onFailure(Call<Issue> call, Throwable t) {
+        public void onFailure(@NonNull Call<Issue> call, @NonNull Throwable t) {
             swipeRefresh.setRefreshing(false);
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
         }
@@ -351,7 +361,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     private class LockIssueCallback implements Callback<Issue> {
 
         @Override
-        public void onResponse(Call<Issue> call, Response<Issue> response) {
+        public void onResponse(@NonNull Call<Issue> call, Response<Issue> response) {
 
             switch (response.code()) {
                 case 204:
@@ -384,7 +394,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         }
 
         @Override
-        public void onFailure(Call<Issue> call, Throwable t) {
+        public void onFailure(@NonNull Call<Issue> call, @NonNull Throwable t) {
             swipeRefresh.setRefreshing(false);
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
         }
@@ -393,6 +403,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
     private class IssueOpenCloseCallback implements Callback<Issue> {
 
         @StringRes
+        final
         int toastText;
 
         IssueOpenCloseCallback(@StringRes int toastText) {
@@ -400,7 +411,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         }
 
         @Override
-        public void onResponse(Call<Issue> call, Response<Issue> response) {
+        public void onResponse(@NonNull Call<Issue> call, Response<Issue> response) {
             switch (response.code()) {
                 case 200:
                     loadIssue();
@@ -432,7 +443,7 @@ public final class IssueDetailsFragment extends Fragment implements NavigationHe
         }
 
         @Override
-        public void onFailure(Call<Issue> call, Throwable t) {
+        public void onFailure(@NonNull Call<Issue> call, @NonNull Throwable t) {
             swipeRefresh.setRefreshing(false);
             Toast.makeText(activity, R.string.network_error_toast, Toast.LENGTH_LONG).show();
         }

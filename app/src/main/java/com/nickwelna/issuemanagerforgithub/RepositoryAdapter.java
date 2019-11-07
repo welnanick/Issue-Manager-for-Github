@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.nickwelna.issuemanagerforgithub.RepositoryAdapterMoshi.RepositoryViewHolderMoshi;
 import com.nickwelna.issuemanagerforgithub.models.Repository;
 
 import java.util.ArrayList;
@@ -18,19 +17,19 @@ import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public final class RepositoryAdapterMoshi extends RecyclerView.Adapter<RepositoryViewHolderMoshi> {
+public final class RepositoryAdapter extends RecyclerView.Adapter<RepositoryAdapter.RepositoryViewHolder> {
     private List<Repository> repositoryList = new ArrayList<>();
 
     @NonNull
     @Override
-    public RepositoryViewHolderMoshi onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public RepositoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View itemView = inflater.inflate(R.layout.repository_list_item, parent, false);
-        return new RepositoryViewHolderMoshi(itemView);
+        return new RepositoryViewHolder(itemView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RepositoryViewHolderMoshi holder, int position) {
+    public void onBindViewHolder(@NonNull RepositoryViewHolder holder, int position) {
         holder.bind(repositoryList.get(position));
     }
 
@@ -44,17 +43,17 @@ public final class RepositoryAdapterMoshi extends RecyclerView.Adapter<Repositor
         notifyDataSetChanged();
     }
 
-    static final class RepositoryViewHolderMoshi extends RecyclerView.ViewHolder {
+    static final class RepositoryViewHolder extends RecyclerView.ViewHolder {
 
         @BindView(R.id.repository_name)
         TextView repositoryName;
 
-        RepositoryViewHolderMoshi(@NonNull View itemView) {
+        RepositoryViewHolder(@NonNull View itemView) {
             super(itemView);
             ButterKnife.bind(this, itemView);
         }
 
-        public void bind(@NonNull Repository repository) {
+        void bind(@NonNull Repository repository) {
             String repositoryNameString = repository.getFullName();
             repositoryName.setText(repositoryNameString);
             Bundle bundle = new Bundle();

@@ -51,7 +51,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
     @BindView(R.id.pinned_repository_swipe_refresh)
     SwipeRefreshLayout swipeRefresh;
     @Nullable
-    private RepositoryAdapterMoshi repositoryAdapter;
+    private RepositoryAdapter repositoryAdapter;
     private NewMainActivity activity;
     @Nullable
     private EditText searchText;
@@ -78,7 +78,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
             activity.loadUser();
             LinearLayoutManager linearLayoutManager = new LinearLayoutManager(activity);
             repositoryRecyclerView.setLayoutManager(linearLayoutManager);
-            repositoryAdapter = new RepositoryAdapterMoshi();
+            repositoryAdapter = new RepositoryAdapter();
             repositoryRecyclerView.setAdapter(repositoryAdapter);
             swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
             swipeRefresh.setOnRefreshListener(() -> {
@@ -96,7 +96,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
     }
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         logger.atInfo().log("onAttach() called");
         this.activity = (NewMainActivity) context;
@@ -144,7 +144,7 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         return super.onOptionsItemSelected(item);
     }
 
@@ -153,7 +153,11 @@ public final class PinnedRepositoriesFragment extends Fragment implements Naviga
         InputMethodManager imm = (InputMethodManager) activity
                 .getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null && imm.isAcceptingText()) {
-            imm.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
+            View currentFocus = activity.getCurrentFocus();
+            if (currentFocus == null) {
+                return;
+            }
+            imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
         }
 
         GitHubService service = activity.getService();
